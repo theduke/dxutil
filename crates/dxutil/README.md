@@ -25,4 +25,5 @@ unavailable. Other configurations use a process-wide `Instant` clock.
 | Dioxus Native (Blitz) | Yes | Instant | Unavailable |
 | Headless / native | Yes | Instant | Unavailable |
 
-`EventListener` needs `web-sys` on wasm32; a native webview does not expose it.
+`EventListener` needs `web-sys` on wasm32. Dioxus Desktop runs Rust natively
+outside its webview, so `web-sys` is unavailable there.
