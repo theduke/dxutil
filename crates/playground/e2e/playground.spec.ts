@@ -9,7 +9,7 @@ test('crate navigation, shareable routes, history, search, theme, and reset', as
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('./');
-  await expect(page.getByRole('navigation', { name: 'Component stories' }).getByRole('link')).toHaveCount(11);
+  await expect(page.getByRole('navigation', { name: 'Component stories' }).getByRole('link')).toHaveCount(12);
   await page.getByRole('button', { name: 'Primary', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Total clicks: 1');
   await page.getByRole('button', { name: 'Reset story' }).click();
@@ -99,6 +99,9 @@ test('graph layout controls, node insertion, and keyboard selection', async ({ p
 
 test('form validation prevents invalid submission and reset clears saved state', async ({ page }) => {
   await openStory(page, 'form', 'Validation & submission');
+  await page.getByLabel('Display name').focus();
+  await page.getByLabel('Email address').focus();
+  await expect(page.getByText('Enter a name with at least 2 characters.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Save profile' }).click();
   await expect(page.getByText('Enter a name with at least 2 characters.', { exact: true })).toBeVisible();
   await page.getByLabel('Display name').fill('Ada Lovelace');
@@ -152,4 +155,42 @@ test('responsive preview and keyboard skip link', async ({ page }, testInfo) => 
   await expect(page.getByRole('button', { name: 'Primary', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.screenshot({ path: testInfo.outputPath('mobile.png'), fullPage: true });
+});
+
+test('form fields bind labels, drafts, and errors', async ({ page }) => {
+  await openStory(page, 'form-fields', 'Form fields');
+  const name = page.getByLabel('Name', { exact: true });
+  const age = page.getByLabel('Age', { exact: true });
+  await name.focus();
+  await age.focus();
+  await expect(page.getByText('Enter your name.', { exact: true })).toBeVisible();
+  await expect(name).toHaveAttribute('aria-invalid', 'true');
+  await expect(name).toHaveAttribute('aria-describedby', /signup-name-errors/);
+  await age.fill('1x');
+  await name.focus();
+  await expect(age).toHaveValue('1x');
+  await expect(age).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.locator('#signup-age-errors')).toContainText('invalid number:');
+  const password = page.getByLabel('Password', { exact: true });
+  await password.fill('a password');
+  await page.getByRole('button', { name: 'Show password', exact: true }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await expect(password).toHaveValue('a password');
+  await page.getByText('Send me updates', { exact: true }).click();
+  await expect(page.getByRole('checkbox', { name: 'Send me updates' })).toHaveAttribute('aria-checked', 'true');
+  await page.getByLabel('Plan', { exact: true }).selectOption('1');
+  await expect(page.locator('.state-card')).toContainText('Team');
+  await expect(page.locator('.dx-select-trigger')).toContainText('Team');
+  await expect(page.locator('.dx-select-trigger')).toHaveAttribute('aria-labelledby', /dx-field-.*-label dx-field-/);
+  await name.fill('Ada Lovelace');
+  await age.fill('37');
+  await page.getByRole('button', { name: 'Save account', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Saved locally: Ada Lovelace (Team)');
+  await age.fill('bad');
+  await page.getByRole('button', { name: 'Reset fields', exact: true }).click();
+  await expect(name).toHaveValue('');
+  await expect(age).toHaveValue('');
+  await expect(password).toHaveValue('');
+  await expect(page.locator('.dx-field-errors li')).toHaveCount(0);
+  await expect(name).not.toHaveAttribute('aria-invalid', 'true');
 });

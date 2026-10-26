@@ -47,6 +47,20 @@ where
 }
 
 impl<Parent, Value, Draft> FieldSpec<Parent, Value, Draft> {
+    /// Edit through a string draft without requiring an application type to implement a trait.
+    /// Whitespace-only drafts count as empty. Parse failures remain visible in the draft.
+    pub fn text_draft(
+        self,
+        format: impl Fn(&Value) -> String + 'static,
+        parse: impl Fn(&str) -> Result<Value, FormError> + 'static,
+    ) -> FieldSpec<Parent, Value, String> {
+        self.with_draft(
+            format,
+            move |draft: &String| parse(draft),
+            |draft: &String| draft.trim().is_empty(),
+        )
+    }
+
     pub fn validator(mut self, validator: FieldValidator<Parent, Value>) -> Self {
         self.validators.push(validator);
         self
@@ -100,6 +114,7 @@ where
     draft_signal: Signal<Draft>,
     initial_draft_signal: Signal<Draft>,
     meta_signal: Signal<FieldMeta>,
+    validation: ValidationStrategy,
 }
 
 impl<Value, Root, Draft> Clone for FieldHandle<Value, Root, Draft>
@@ -123,6 +138,7 @@ where
             draft_signal: self.draft_signal,
             initial_draft_signal: self.initial_draft_signal,
             meta_signal: self.meta_signal,
+            validation: self.validation,
         }
     }
 }
@@ -273,9 +289,82 @@ where
             draft_signal,
             initial_draft_signal,
             meta_signal,
+            validation: spec.validation,
         };
         handle.refresh_node_state_local();
         handle
+    }
+
+    /// The owning form root.
+    pub fn form(&self) -> FormRoot<Root> {
+        self.root.clone()
+    }
+
+    /// Union of field and form strategies: fields can add phases, but cannot remove them.
+    /// Mount is reported here but has no automatic event hook. Submit still validates all fields.
+    pub fn validation(&self) -> ValidationStrategy {
+        let form = self.root.state.options.validation;
+        ValidationStrategy {
+            on_mount: self.validation.on_mount || form.on_mount,
+            on_change: self.validation.on_change || form.on_change,
+            on_blur: self.validation.on_blur || form.on_blur,
+            on_submit: self.validation.on_submit || form.on_submit,
+        }
+    }
+
+    /// Validate when this phase is enabled, skipping validators while a parse error exists.
+    /// Async change validation can race: results are not yet guarded by validation epochs.
+    pub async fn validate_if(&self, phase: ValidationPhase) -> Option<Result<(), Vec<FormError>>> {
+        if !self.validation().should_validate(phase) {
+            return None;
+        }
+        let has_parse_errors = self
+            .root
+            .state
+            .registry
+            .peek()
+            .nodes
+            .get(&self.path)
+            .is_some_and(|node| !node.parse_errors.is_empty());
+        if has_parse_errors {
+            return None;
+        }
+        Some(self.root.validate_path(self.path.clone(), phase).await)
+    }
+
+    fn spawn_validation(&self, phase: ValidationPhase) {
+        if self.validation().should_validate(phase) {
+            let field = self.clone();
+            dioxus::core::Runtime::current().in_scope(self.root.state.owner, move || {
+                spawn(async move {
+                    let _ = field.validate_if(phase).await;
+                });
+            });
+        }
+    }
+
+    /// Mark focused. This does not run validators.
+    pub fn handle_focus(&self) {
+        self.set_focused(true);
+    }
+
+    /// Mark touched and unfocused, then validate on blur when enabled.
+    /// Validation tasks belong to the form owner, so unmounting a control does not cancel them.
+    pub fn handle_blur(&self) {
+        self.set_focused(false);
+        self.spawn_validation(ValidationPhase::Blur);
+    }
+
+    /// Parse and retain the draft, then validate on change when enabled.
+    pub fn handle_draft_change(&self, draft: Draft) {
+        self.set_draft(draft);
+        self.spawn_validation(ValidationPhase::Change);
+    }
+
+    /// Commit a value, then validate on change when enabled.
+    pub fn handle_value_change(&self, value: Value) {
+        self.set_value(value);
+        self.spawn_validation(ValidationPhase::Change);
     }
 
     pub fn path(&self) -> FieldPath {
@@ -339,6 +428,7 @@ where
         self.meta_signal.into()
     }
 
+    /// Commit a value without running validators; use `handle_value_change` for events.
     pub fn set_value(&self, value: Value) {
         let set = self.set.clone();
         let root_value = value.clone();
@@ -356,6 +446,7 @@ where
         self.refresh_node_state();
     }
 
+    /// Parse and retain a draft without running validators; use `handle_draft_change` for events.
     pub fn set_draft(&self, draft: Draft) {
         set_signal_if_changed(self.draft_signal, draft.clone());
         match (self.parse)(&draft) {
@@ -403,6 +494,7 @@ where
         self.root.recompute_all_meta();
     }
 
+    /// Set focus (blur also marks touched) without validators; use `handle_blur` for events.
     pub fn set_focused(&self, focused: bool) {
         self.root.with_registry(|registry| {
             if let Some(node) = registry.nodes.get_mut(&self.path) {
@@ -492,4 +584,15 @@ where
     Draft: Clone + PartialEq + 'static,
 {
     scope.field(spec())
+}
+
+impl<Parent, Value: crate::InputValue> FieldSpec<Parent, Value> {
+    /// Edit through an `InputValue` string draft, preserving invalid text and parse errors.
+    pub fn input_draft(self) -> FieldSpec<Parent, Value, String> {
+        self.with_draft(
+            |value: &Value| value.to_input_value(),
+            |draft: &String| Value::from_input_value(draft),
+            |draft: &String| draft.trim().is_empty(),
+        )
+    }
 }

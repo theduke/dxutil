@@ -258,6 +258,7 @@ where
                 node.touched = false;
                 node.focused = false;
                 node.validating = false;
+                node.parse_errors.clear();
                 node.errors.clear();
                 node.submit_errors.clear();
             }

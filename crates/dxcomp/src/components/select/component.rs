@@ -9,6 +9,14 @@ pub use dioxus_primitives::select::SelectGroup;
 
 #[component]
 pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element {
+    render_select(props, Vec::new(), None)
+}
+
+pub(crate) fn render_select<T: Clone + PartialEq + 'static>(
+    props: SelectProps<T>,
+    trigger_attributes: Vec<Attribute>,
+    placeholder: Option<String>,
+) -> Element {
     let floating = crate::floating::use_floating(".dx-select-trigger", ".dx-select-list");
     let base = attributes!(div { class: "dx-select", "data-dx-floating": floating });
     let merged = merge_attributes(vec![base, props.attributes]);
@@ -28,7 +36,8 @@ pub fn Select<T: Clone + PartialEq + 'static>(props: SelectProps<T>) -> Element 
             attributes: merged,
             select::SelectTrigger {
                 class: "dx-select-trigger",
-                select::SelectValue {}
+                attributes: trigger_attributes,
+                select::SelectValue { placeholder: placeholder.unwrap_or_else(|| "Select an option".to_string()) }
                 ChevronDown {
                     class: "dx-select-expand-icon",
                     size: "20px",

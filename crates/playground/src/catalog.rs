@@ -91,6 +91,15 @@ pub const STORIES: &[Story] = &[
         notes: "GraphCanvas is content agnostic. The host owns model data; drag positions in this story remain local. Desktop drags end at the canvas boundary.",
     },
     Story {
+        id: "form-fields",
+        group: "dxcomp",
+        category: "Forms",
+        title: "Form fields",
+        description: "Typed draft controls, accessible labels and errors, and a custom table layout.",
+        instructions: "Blur an empty Name, enter invalid text in Age, toggle password visibility, and choose a plan. Save a valid name, then reset the fields. Quota edits an application enum through a string draft.",
+        notes: "Fields bind dxform state; no JavaScript besides styled Select positioning. Focus/blur and selects work on web and desktop webviews; Native has no focus events or select widget. Explicit IDs support hydration.",
+    },
+    Story {
         id: "form",
         group: "dxform",
         category: "Forms",

@@ -16,6 +16,7 @@ pub mod dialog;
 pub mod drag_and_drop_list;
 pub mod dropdown_menu;
 pub mod form;
+pub use form::*;
 pub mod hover_card;
 pub mod input;
 pub mod item;

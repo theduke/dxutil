@@ -5918,3 +5918,86 @@ a.dx-item:hover {
 @media (prefers-reduced-motion: reduce) {
   .dx-spinner__circle { animation: none; }
 }
+
+/* form */
+.dx-field {
+  display: grid;
+  gap: 0.375rem;
+}
+
+.dx-field[data-layout="inline"] .dx-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.dx-field-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dx-field-required,
+.dx-field-errors,
+.dx-form-errors {
+  color: var(--primary-error-color);
+}
+
+.dx-field-description,
+.dx-field-errors {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.dx-field-description {
+  color: var(--secondary-color-5);
+}
+
+.dx-field-errors ul,
+.dx-form-errors ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dx-field[data-invalid="true"] :is(.dx-input, .dx-textarea, .dx-native-select, .dx-select-trigger),
+:is(.dx-input, .dx-textarea, .dx-native-select, .dx-select-trigger)[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 1px var(--primary-error-color);
+}
+
+.dx-password-input {
+  display: flex;
+  position: relative;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dx-password-input .dx-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dx-password-toggle {
+  flex-shrink: 0;
+}
+
+.dx-native-select {
+  box-sizing: border-box;
+  min-height: 2.5rem;
+  padding: 8px 12px;
+  border: 1px solid var(--primary-color-6);
+  border-radius: 0.5rem;
+  background: var(--primary-color);
+  color: var(--secondary-color-4);
+  font: inherit;
+}
+
+.dx-native-select:disabled,
+.dx-native-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.dx-native-checkbox {
+  accent-color: var(--secondary-color-4);
+}

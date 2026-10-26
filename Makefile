@@ -27,13 +27,14 @@ check-headless:
 	cargo check --workspace --exclude dxeditor_harness --all-targets --no-default-features --locked --quiet --message-format=short
 
 check-wasm:
-	cargo check --workspace --all-targets --target wasm32-unknown-unknown --features dxcomp/web,dxeditor/web,dxgraph/web,dxutil/web,dxcode/web,dxcode/all-languages,dxterm/web --locked --quiet --message-format=short
+	cargo check --workspace --all-targets --target wasm32-unknown-unknown --features dxcomp/web,dxcomp/dxform,dxeditor/web,dxgraph/web,dxutil/web,dxcode/web,dxcode/all-languages,dxterm/web --locked --quiet --message-format=short
 
 check-desktop:
-	cargo check -p dxcomp -p dxgraph -p dxcode -p dxterm --all-targets --no-default-features --features dxcomp/desktop,dxgraph/demo,dxcode/desktop,dxcode/all-languages,dxterm/desktop --locked --quiet --message-format=short
+	cargo check -p dxcomp -p dxgraph -p dxcode -p dxterm --all-targets --no-default-features --features dxcomp/desktop,dxcomp/dxform,dxgraph/demo,dxcode/desktop,dxcode/all-languages,dxterm/desktop --locked --quiet --message-format=short
 	$(MAKE) check-playground-desktop
 
 check-native:
+	cargo check -p dxcomp --no-default-features --features native,dxform --locked --quiet --message-format=short
 	cargo check -p dxterm --all-targets --no-default-features --features native --locked --quiet --message-format=short
 
 docs:
@@ -100,3 +101,13 @@ test-code-wasm:
 
 measure-code-sizes:
 	bash crates/dxcode/scripts/measure-sizes.sh
+
+.PHONY: check-form test-form
+check-form:
+	cargo check -p dxcomp --all-targets --no-default-features --locked --quiet --message-format=short
+	cargo check -p dxcomp --all-targets --no-default-features --features dxform --locked --quiet --message-format=short
+
+test-form:
+	cargo test -p dxform --locked --quiet --message-format=short
+	cargo test -p dxcomp --no-default-features --locked --quiet --message-format=short
+	cargo test -p dxcomp --features dxform --locked --quiet --message-format=short

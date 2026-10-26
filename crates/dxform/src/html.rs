@@ -92,16 +92,6 @@ where
             },
         )
     }
-
-    pub fn on_blur(&self) -> EventHandler<FocusEvent> {
-        let field = self.clone();
-        EventHandler::new(move |_| field.set_focused(false))
-    }
-
-    pub fn on_focus(&self) -> EventHandler<FocusEvent> {
-        let field = self.clone();
-        EventHandler::new(move |_| field.set_focused(true))
-    }
 }
 
 impl<Root> FieldHandle<bool, Root>
@@ -114,6 +104,69 @@ where
 
     pub fn on_change_checked(&self) -> EventHandler<FormEvent> {
         let field = self.clone();
-        EventHandler::new(move |event: FormEvent| field.set_value(event.value() == "true"))
+        EventHandler::new(move |event: FormEvent| field.set_value(event.checked()))
     }
 }
+
+impl<Value, Root, Draft> FieldHandle<Value, Root, Draft>
+where
+    Root: Clone + PartialEq + 'static,
+    Value: Clone + PartialEq + 'static,
+    Draft: Clone + PartialEq + 'static,
+{
+    /// Mark unfocused and touched without validation; use `handle_blur` for validation.
+    pub fn on_blur(&self) -> EventHandler<FocusEvent> {
+        let field = self.clone();
+        EventHandler::new(move |_| field.set_focused(false))
+    }
+
+    /// Mark focused without running validation.
+    pub fn on_focus(&self) -> EventHandler<FocusEvent> {
+        let field = self.clone();
+        EventHandler::new(move |_| field.set_focused(true))
+    }
+}
+
+impl<Value, Root> FieldHandle<Value, Root, String>
+where
+    Root: Clone + PartialEq + 'static,
+    Value: Clone + PartialEq + 'static,
+{
+    /// Input handler preserving the text draft and validating on change when enabled.
+    pub fn on_input_draft(&self) -> EventHandler<FormEvent> {
+        let field = self.clone();
+        EventHandler::new(move |event: FormEvent| field.handle_draft_change(event.value()))
+    }
+}
+
+macro_rules! optional_input_number {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl InputValue for Option<$ty> {
+                fn to_input_value(&self) -> String {
+                    self.map(|value| value.to_string()).unwrap_or_default()
+                }
+
+                fn from_input_value(value: &str) -> Result<Self, FormError> {
+                    let value = value.trim();
+                    if value.is_empty() {
+                        Ok(None)
+                    } else {
+                        value.parse::<$ty>().map(Some).map_err(|err| {
+                            FormError::new(format!("invalid number: {err}"))
+                                .with_source(FormErrorSource::Parse)
+                        })
+                    }
+                }
+
+                fn is_empty_input(&self) -> bool {
+                    self.is_none()
+                }
+            }
+        )*
+    };
+}
+
+optional_input_number!(
+    i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
+);

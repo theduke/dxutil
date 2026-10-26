@@ -150,6 +150,7 @@ impl<T: Clone + PartialEq + 'static> FormRoot<T> {
                 node.dirty = false;
                 node.validating = false;
                 node.validity = Validity::NotValidated;
+                node.parse_errors.clear();
                 node.errors.clear();
                 node.submit_errors.clear();
             }

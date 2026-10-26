@@ -520,3 +520,268 @@ fn transformed_field_retains_invalid_draft_without_changing_root_value() {
         assert!(!*submitted.borrow());
     });
 }
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct DraftNumbers {
+    count: u32,
+    optional: Option<u32>,
+}
+
+fn count_draft(
+    scope: &FormScope<DraftNumbers, DraftNumbers>,
+) -> FieldHandle<u32, DraftNumbers, String> {
+    scope.field(
+        FieldSpec::new(
+            "count",
+            |value: &DraftNumbers| value.count,
+            |value, count| value.count = count,
+        )
+        .input_draft(),
+    )
+}
+
+#[test]
+fn input_draft_keeps_invalid_text_and_commits_valid_numbers() {
+    run_in_runtime(|| {
+        let form = FormRoot::new(DraftNumbers::default());
+        let field = count_draft(&form.scope());
+        field.set_draft("12".into());
+        assert_eq!(field.value(), 12);
+        field.set_draft("1x".into());
+        assert_eq!(field.draft(), "1x");
+        assert_eq!(field.value(), 12);
+        assert_eq!(form.values().count, 12);
+        let errors = field.meta().errors;
+        assert_eq!(errors.len(), 1);
+        assert_eq!(errors[0].source, FormErrorSource::Parse);
+        // Focus helpers are also available with a non-default draft type.
+        let _: EventHandler<FocusEvent> = field.on_focus();
+        let _: EventHandler<FocusEvent> = field.on_blur();
+        let _: EventHandler<FormEvent> = field.on_input_draft();
+        field.set_draft("13".into());
+        assert_eq!(field.value(), 13);
+        assert!(field.meta().errors.is_empty());
+    });
+}
+
+#[test]
+fn optional_number_input_draft_maps_empty_to_none() {
+    run_in_runtime(|| {
+        let form = FormRoot::new(DraftNumbers::default());
+        let field = form.scope().field(
+            FieldSpec::new(
+                "optional",
+                |value: &DraftNumbers| value.optional,
+                |value, n| value.optional = n,
+            )
+            .input_draft(),
+        );
+        assert_eq!(field.draft(), "");
+        field.set_draft(" 7 ".into());
+        assert_eq!(field.value(), Some(7));
+        assert_eq!(field.draft(), " 7 ");
+        field.set_draft(" \t ".into());
+        assert_eq!(field.value(), None);
+        assert!(field.meta().empty);
+        assert!(field.meta().errors.is_empty());
+    });
+}
+
+#[test]
+fn text_draft_supports_foreign_values() {
+    #[derive(Clone, Debug, PartialEq)]
+    enum AppValue {
+        Null,
+        Int(i64),
+    }
+    run_in_runtime(|| {
+        let form = FormRoot::new(AppValue::Null);
+        // The application type has neither Default nor InputValue.
+        let spec = FieldSpec {
+            name: "value".into(),
+            get: Rc::new(|value: &AppValue| value.clone()),
+            set: Rc::new(|value, next| *value = next),
+            format: Rc::new(|value: &AppValue| value.clone()),
+            parse: Rc::new(|value: &AppValue| Ok(value.clone())),
+            is_empty: Rc::new(|value: &AppValue| *value == AppValue::Null),
+            validators: Vec::new(),
+            validation: ValidationStrategy::default(),
+        };
+        let field = form.scope().field(spec.text_draft(
+            |value| match value {
+                AppValue::Null => String::new(),
+                AppValue::Int(value) => value.to_string(),
+            },
+            |text| {
+                if text.trim().is_empty() {
+                    Ok(AppValue::Null)
+                } else {
+                    text.parse()
+                        .map(AppValue::Int)
+                        .map_err(|_| FormError::new("Expected an integer"))
+                }
+            },
+        ));
+        field.set_draft("42".into());
+        assert_eq!(form.values(), AppValue::Int(42));
+        field.set_draft("no".into());
+        assert_eq!(field.draft(), "no");
+        assert_eq!(field.value(), AppValue::Int(42));
+        assert_eq!(field.meta().errors[0].source, FormErrorSource::Parse);
+    });
+}
+
+#[test]
+fn effective_validation_is_union_of_field_and_form() {
+    run_in_runtime(|| {
+        let form = FormRoot::with_options(
+            FormOptions::new(String::new()).validation(ValidationStrategy::blur()),
+        );
+        let field = form.scope().field(
+            FieldSpec::new(
+                "text",
+                |value: &String| value.clone(),
+                |value, next| *value = next,
+            )
+            .validation(ValidationStrategy::change()),
+        );
+        let strategy = field.validation();
+        assert!(strategy.on_change);
+        assert!(strategy.on_blur);
+        assert!(strategy.on_submit);
+        assert!(!strategy.on_mount);
+        assert!(field.form() == form);
+        let inheriting = form.scope().field(
+            FieldSpec::new(
+                "other",
+                |value: &String| value.clone(),
+                |value, next| *value = next,
+            )
+            .validation(ValidationStrategy::never()),
+        );
+        assert!(inheriting.validation().on_blur);
+        assert!(inheriting.validation().on_submit);
+    });
+}
+
+#[test]
+fn validate_if_runs_only_for_enabled_phases() {
+    run_in_runtime(|| {
+        let calls = Rc::new(std::cell::Cell::new(0));
+        let validator_calls = calls.clone();
+        let form = FormRoot::with_options(
+            FormOptions::new(String::new()).validation(ValidationStrategy::blur()),
+        );
+        let field = form.scope().field(
+            FieldSpec::new(
+                "text",
+                |value: &String| value.clone(),
+                |value, next| *value = next,
+            )
+            .validator(FieldValidator::sync(move |ctx| {
+                validator_calls.set(validator_calls.get() + 1);
+                vec![FormError::field(ctx.path, "Required")]
+            })),
+        );
+        assert!(futures::executor::block_on(field.validate_if(ValidationPhase::Change)).is_none());
+        assert_eq!(calls.get(), 0);
+        assert!(matches!(
+            futures::executor::block_on(field.validate_if(ValidationPhase::Blur)),
+            Some(Err(_))
+        ));
+        assert_eq!(calls.get(), 1);
+    });
+}
+
+#[test]
+fn validate_if_skips_validators_while_parse_error() {
+    run_in_runtime(|| {
+        let calls = Rc::new(std::cell::Cell::new(0));
+        let validator_calls = calls.clone();
+        let form = FormRoot::with_options(
+            FormOptions::new(0u32).validation(ValidationStrategy::change()),
+        );
+        let field = form.scope().field(
+            FieldSpec::new(
+                "value",
+                |value: &u32| *value,
+                |value, next| *value = next,
+            )
+            .validator(FieldValidator::sync(move |_| {
+                validator_calls.set(validator_calls.get() + 1);
+                Vec::new()
+            }))
+            .input_draft(),
+        );
+        field.set_draft("bad".into());
+        assert!(futures::executor::block_on(field.validate_if(ValidationPhase::Change)).is_none());
+        assert_eq!(calls.get(), 0);
+        field.set_draft("2".into());
+        assert_eq!(
+            futures::executor::block_on(field.validate_if(ValidationPhase::Change)),
+            Some(Ok(()))
+        );
+        assert_eq!(calls.get(), 1);
+    });
+}
+
+#[test]
+fn handle_blur_marks_touched_and_unfocused() {
+    run_in_runtime(|| {
+        let form = FormRoot::new(DraftNumbers::default());
+        let field = count_draft(&form.scope());
+        field.handle_focus();
+        assert!(field.meta().focused);
+        assert!(!field.meta().touched);
+        field.handle_blur();
+        assert!(!field.meta().focused);
+        assert!(field.meta().touched);
+    });
+}
+
+#[test]
+fn form_reset_clears_parse_errors() {
+    run_in_runtime(|| {
+        let form = FormRoot::new(DraftNumbers {
+            count: 5,
+            optional: None,
+        });
+        let field = count_draft(&form.scope());
+        field.set_draft("bad".into());
+        assert!(!field.meta().errors.is_empty());
+        form.reset();
+        assert_eq!(field.value(), 5);
+        assert_eq!(field.draft(), "5");
+        assert!(field.meta().errors.is_empty());
+        assert!(form.meta().errors.is_empty());
+        assert!(!field.meta().touched);
+        assert!(!form.meta().dirty);
+    });
+}
+
+#[test]
+fn scope_reset_clears_parse_errors() {
+    run_in_runtime(|| {
+        let form = FormRoot::new(Appointment { day: 10 });
+        let day = form.scope().field(FieldSpec::new(
+            "day",
+            |value: &Appointment| value.day,
+            |value, day| value.day = day,
+        ));
+        let leaf = day.scope().field(
+            FieldSpec::new(
+                "number",
+                |value: &i32| *value,
+                |value, next| *value = next,
+            )
+            .input_draft(),
+        );
+        leaf.set_draft("bad".into());
+        assert!(!leaf.meta().errors.is_empty());
+        day.scope().reset();
+        assert_eq!(leaf.draft(), "10");
+        assert!(leaf.meta().errors.is_empty());
+        assert!(form.meta().errors.is_empty());
+        assert!(!leaf.meta().touched);
+    });
+}

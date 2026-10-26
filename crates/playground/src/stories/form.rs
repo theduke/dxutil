@@ -61,13 +61,15 @@ pub fn ProfileForm() -> Element {
     );
     let meta = form.meta();
     let reset = form.clone();
+    let blur_name = name.clone();
+    let blur_email = email.clone();
     rsx! {
         div { class: "demo-columns",
             form { class: "settings-card", onsubmit: form.submit_handler(), novalidate: true,
                 h3 { "Your profile" }
                 label { r#for: "profile-name", "Display name" }
                 input { class: "demo-input", id: "profile-name", autocomplete: "name", value: name.input_value(),
-                    oninput: name.on_input_text(), onfocus: name.on_focus(), onblur: name.on_blur(),
+                    oninput: name.on_input_text(), onfocus: name.on_focus(), onblur: move |_| blur_name.handle_blur(),
                     "aria-invalid": !name.meta().errors.is_empty(), "aria-describedby": "name-errors",
                 }
                 div { id: "name-errors", class: "field-errors", "aria-live": "polite",
@@ -75,7 +77,7 @@ pub fn ProfileForm() -> Element {
                 }
                 label { r#for: "profile-email", "Email address" }
                 input { class: "demo-input", id: "profile-email", r#type: "email", autocomplete: "email", value: email.input_value(),
-                    oninput: email.on_input_text(), onfocus: email.on_focus(), onblur: email.on_blur(),
+                    oninput: email.on_input_text(), onfocus: email.on_focus(), onblur: move |_| blur_email.handle_blur(),
                     "aria-invalid": !email.meta().errors.is_empty(), "aria-describedby": "email-errors",
                 }
                 div { id: "email-errors", class: "field-errors", "aria-live": "polite",

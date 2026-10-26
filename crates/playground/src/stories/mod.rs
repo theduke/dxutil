@@ -2,6 +2,7 @@ mod code;
 mod components;
 mod editor;
 mod form;
+mod form_fields;
 mod graph;
 mod spinner;
 mod terminal;
@@ -17,6 +18,7 @@ pub fn render(id: &str) -> Element {
         "markdown" => rsx! { editor::Markdown {} },
         "composer" => rsx! { editor::Composer {} },
         "graph" => rsx! { graph::Graph {} },
+        "form-fields" => rsx! { form_fields::FormFields {} },
         "form" => rsx! { form::ProfileForm {} },
         "terminal" => rsx! { terminal::Terminal {} },
         "code" => rsx! { code::Code {} },
@@ -29,6 +31,7 @@ pub fn source(id: &str) -> &'static str {
         "markdown" | "composer" => include_str!("editor.rs"),
         "graph" => include_str!("graph.rs"),
         "spinners" => include_str!("spinner.rs"),
+        "form-fields" => include_str!("form_fields.rs"),
         "form" => include_str!("form.rs"),
         "terminal" => include_str!("terminal.rs"),
         "code" => include_str!("code.rs"),

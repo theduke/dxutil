@@ -2960,6 +2960,7 @@ dependencies = [
  "dioxus-icons",
  "dioxus-primitives",
  "dioxus-ssr",
+ "dxform",
  "dxutil",
  "palette",
  "serde",

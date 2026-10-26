@@ -104,3 +104,8 @@ test server/base URL together. No generated site is committed to the repository.
 
 The deployment setup follows the upstream [Dioxus base-path documentation](https://dioxuslabs.com/learn/0.7/guides/tools/configure/)
 and [GitHub Pages custom workflow requirements](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages).
+
+The **Form fields** story demonstrates dxcomp's optional dxform bindings: string
+and numeric drafts, password visibility, typed toggles and selects, submit/reset
+actions, and a table row that supplies its own label and field context. The
+**Validation & submission** story remains a headless dxform example using HTML.

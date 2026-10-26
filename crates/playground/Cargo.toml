@@ -13,7 +13,7 @@ desktop = ["dioxus/desktop", "dxcomp/desktop", "dxcode/desktop", "dxterm/desktop
 
 [dependencies]
 dioxus = { workspace = true, features = ["router"] }
-dxcomp = { path = "../dxcomp" }
+dxcomp = { path = "../dxcomp", features = ["dxform"] }
 dxeditor = { path = "../dxeditor", default-features = false, features = ["markdown"] }
 dxgraph = { path = "../dxgraph" }
 dxform = { path = "../dxform" }
