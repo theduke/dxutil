@@ -72,7 +72,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [headless, wasm, desktop, msrv]
+        mode: [headless, wasm, desktop]
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
@@ -81,7 +81,7 @@ jobs:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
         with:
-          toolchain: ${{ matrix.mode == 'msrv' && '1.90.0' || 'stable' }}
+          toolchain: stable
           targets: wasm32-unknown-unknown
       - name: Install desktop dependencies
         if: matrix.mode == 'desktop'
@@ -100,7 +100,6 @@ jobs:
             headless) make check-headless ;;
             wasm) make check-wasm ;;
             desktop) make check-desktop ;;
-            msrv) RUSTUP_TOOLCHAIN=1.90.0 make check ;;
             *) exit 1 ;;
           esac
 

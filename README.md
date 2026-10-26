@@ -17,7 +17,7 @@ when concrete consumers justify it.
 
 ## Development
 
-Requires Rust (MSRV 1.90), the `wasm32-unknown-unknown` target, Node.js 22,
+Requires stable Rust, the `wasm32-unknown-unknown` target, Node.js 22,
 Python 3, and Make. Use the pinned Nix environment when Nix is available:
 
 ```sh

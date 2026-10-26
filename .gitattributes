@@ -1,0 +1,2 @@
+* text=auto eol=lf
+crates/*/web/dist/* -whitespace linguist-generated=true
