@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://semantic.invalid/schemas/component-document-v2.json",
+  "title": "Semantic Component Document V2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "version", "root"],
+  "properties": {
+    "schema": { "const": "semantic.component-document" },
+    "version": { "const": 2 },
+    "root": { "$ref": "#/$defs/node" },
+    "metadata": { "type": "object" }
+  },
+  "$defs": {
+    "mark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "attrs": { "type": "object" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "attrs": { "type": "object" },
+        "content": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" }
+        },
+        "text": { "type": "string" },
+        "marks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/mark" }
+        }
+      }
+    }
+  }
+}

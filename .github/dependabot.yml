@@ -1,0 +1,26 @@
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      rust:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directories:
+      - /crates/dxcode/web
+      - /crates/dxterm/web
+      - /crates/dxeditor/e2e
+    schedule:
+      interval: weekly
+    groups:
+      javascript:
+        patterns: ["*"]

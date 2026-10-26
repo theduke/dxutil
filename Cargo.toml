@@ -1,0 +1,31 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.90"
+authors = ["Christoph Herzog <chris@theduke.at>"]
+license = "MIT"
+repository = "https://github.com/theduke/dxutil"
+homepage = "https://github.com/theduke/dxutil"
+keywords = ["dioxus", "ui"]
+categories = ["gui", "web-programming"]
+
+[workspace.dependencies]
+dioxus = "0.7.9"
+futures = "=0.3.34"
+serde = "1.0.228"
+serde_json = "1.0.145"
+sha2 = "0.10.9"
+thiserror = "=2.0.21"
+time = "0.3.47"
+uuid = "1.21.0"
+
+[profile.dev]
+opt-level = 1
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false

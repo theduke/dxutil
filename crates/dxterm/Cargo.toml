@@ -1,0 +1,18 @@
+[package]
+name = "dxterm"
+description = "An xterm.js terminal component for Dioxus"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+futures.workspace = true
+dioxus.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+base64 = "0.22.1"

@@ -1,0 +1,16 @@
+[
+  { "value": "https://example.com/a", "hyperlink": true, "media": true },
+  { "value": "HTTP://example.com/image.png", "hyperlink": true, "media": true },
+  { "value": "mailto:a@example.com", "hyperlink": true, "media": false },
+  { "value": "tel:+43123", "hyperlink": true, "media": false },
+  { "value": "/relative", "hyperlink": true, "media": false },
+  { "value": "#fragment", "hyperlink": true, "media": false },
+  { "value": "javascript:alert(1)", "hyperlink": false, "media": false },
+  { "value": "semantic:entity:1", "hyperlink": false, "media": false },
+  { "value": " https://example.com", "hyperlink": false, "media": false },
+  { "value": "https://example.com/a b", "hyperlink": false, "media": false },
+  { "value": "https:\\evil.test", "hyperlink": false, "media": false },
+  { "value": "data:image/png;base64,AA", "hyperlink": false, "media": false },
+  { "value": "blob:https://example.com/id", "hyperlink": false, "media": false },
+  { "value": "http://", "hyperlink": false, "media": false }
+]

@@ -1,0 +1,37 @@
+[package]
+name = "dxgraph"
+description = "A content-agnostic Dioxus graph canvas with native Rust layouts"
+authors.workspace = true
+keywords.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+version.workspace = true
+
+[features]
+default = []
+web = ["dep:web-sys", "dep:wasm-bindgen"]
+demo = ["dioxus/desktop"]
+
+[dependencies]
+dioxus = { workspace = true }
+dioxus-sdk-time = "0.7.0"
+dxcomp = { path = "../dxcomp" }
+serde = { workspace = true, features = ["derive"] }
+indexmap = { version = "2", features = ["serde"] }
+thiserror = "2.0.17"
+web-sys = { version = "0.3.82", optional = true, features = ["Element", "HtmlElement", "FocusOptions", "Performance", "Window", "DomRect", "Event", "EventTarget", "MediaQueryList"] }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[dev-dependencies]
+dioxus-html = { version = "0.7.9", features = ["serialize"] }
+serde_json = { workspace = true }
+dioxus-ssr = "0.7.9"
+
+[[example]]
+name = "demo"
+required-features = ["demo"]

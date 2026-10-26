@@ -1,0 +1,264 @@
+.dxgraph {
+  position: relative;
+  overflow: hidden;
+  touch-action: none;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  background: var(--background, #fff);
+  color: var(--foreground, #222);
+  outline: none;
+}
+.dxgraph-background {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    var(--border, #cbd5e1) 1px,
+    transparent 1px
+  );
+  background-size: calc(var(--dxg-zoom) * 20px) calc(var(--dxg-zoom) * 20px);
+  background-position: var(--dxg-x) var(--dxg-y);
+}
+.dxgraph-world {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+/* A compositor layer only while the view moves: a resting world is painted
+   at its zoom, so text stays crisp when zoomed in. */
+.dxgraph-world[data-moving="true"] {
+  will-change: transform;
+}
+.dxgraph-node {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: max-content;
+  cursor: grab;
+  outline: none;
+  user-select: none;
+  border-radius: 8px;
+}
+.dxgraph-node:focus-visible,
+.dxgraph-node[data-selected="true"] {
+  box-shadow: 0 0 0 3px var(--primary, #6366f1);
+}
+.dxgraph-node[data-draggable="false"] {
+  cursor: default;
+}
+.dxgraph-node[data-draggable="false"]:active {
+  cursor: grabbing;
+}
+.dxgraph-node:active {
+  cursor: grabbing;
+}
+.dxgraph-placeholder {
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 8px;
+  background: var(--muted, #e2e8f0);
+}
+.dxgraph-edges {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+}
+.dxgraph-edge {
+  stroke: var(--muted-foreground, #64748b);
+  stroke-width: 1.5;
+}
+.dxgraph-edge-label {
+  fill: var(--muted-foreground, #64748b);
+  font-size: 11px;
+  paint-order: stroke;
+  stroke: var(--background, #fff);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.dxgraph-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.dxgraph-overlay > * {
+  pointer-events: auto;
+}
+.dxgraph-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 10px;
+  background: var(--background, #fff);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--foreground, #222) 8%, transparent);
+}
+.dxgraph-controls > button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--foreground, #222);
+  font: inherit;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.dxgraph-controls > button:hover {
+  background: var(--muted, #e2e8f0);
+}
+.dxgraph-controls > button:focus-visible {
+  outline: 2px solid var(--primary, #6366f1);
+  outline-offset: 1px;
+}
+.dxgraph-controls__zoom {
+  min-width: 48px !important;
+}
+.dxgraph-control-icon {
+  display: block;
+}
+.dxgraph-edge-hit {
+  pointer-events: stroke;
+  cursor: pointer;
+  stroke: transparent !important;
+}
+/* The hit path is focusable; its UA focus ring would be drawn as a black
+   bounding box. Show focus through the visible stroke instead. */
+.dxgraph-edge-hit:focus {
+  outline: none;
+}
+.dxgraph-edge:hover > path:not(.dxgraph-edge-hit),
+.dxgraph-edge:has(> .dxgraph-edge-hit:focus-visible) > path:not(.dxgraph-edge-hit) {
+  stroke: var(--primary, #6366f1);
+}
+.dxgraph-arrow {
+  /* Arrowheads follow the colour of the edge that references them. */
+  fill: context-stroke;
+}
+.dxgraph-edge[data-selected="true"] {
+  stroke: var(--primary, #6366f1);
+  stroke-width: 2.5;
+}
+.dxgraph-edge-pill {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 999px;
+  background: var(--background, #fff);
+  padding: 2px 7px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.dxgraph-edge-pill[data-selected="true"] {
+  outline: 2px solid var(--primary, #6366f1);
+}
+.dxgraph-marquee {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  border: 1px solid var(--primary, #6366f1);
+}
+.dxgraph-guides line {
+  stroke: var(--primary, #6366f1);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.dxgraph-connect-preview {
+  stroke: var(--primary, #6366f1);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+}
+.dxgraph-connect-preview[data-snapped="true"] {
+  stroke-dasharray: none;
+}
+.dxgraph-node[data-connect-target="true"] {
+  box-shadow:
+    0 0 0 3px var(--primary, #6366f1),
+    0 0 0 8px color-mix(in srgb, var(--primary, #6366f1) 22%, transparent);
+}
+/* Reduced detail keeps the Full layout size so edges meet the border. */
+.dxgraph-node[data-detail="compact"],
+.dxgraph-node[data-detail="minimal"] {
+  display: flex;
+}
+.dxgraph-node[data-detail="compact"] > *,
+.dxgraph-node[data-detail="minimal"] > * {
+  flex: 1;
+  min-width: 0;
+}
+.dxgraph-connect-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: 2px solid var(--background, #fff);
+  border-radius: 50%;
+  background: var(--primary, #6366f1);
+  cursor: crosshair;
+  touch-action: none;
+}
+.dxgraph-connect-top {
+  top: -6px;
+  left: calc(50% - 6px);
+}
+.dxgraph-connect-bottom {
+  bottom: -6px;
+  left: calc(50% - 6px);
+}
+.dxgraph-connect-left {
+  left: -6px;
+  top: calc(50% - 6px);
+}
+.dxgraph-connect-right {
+  right: -6px;
+  top: calc(50% - 6px);
+}
+.dxgraph-minimap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 160px;
+  height: 100px;
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: 6px;
+  background: var(--background, #fff);
+  touch-action: none;
+  cursor: crosshair;
+}
+.dxgraph-minimap-node {
+  fill: var(--muted-foreground, #64748b);
+}
+.dxgraph-minimap-viewport {
+  fill: color-mix(in srgb, var(--primary) 14%, transparent);
+  stroke: var(--primary, #6366f1);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.dxgraph-overlay > .dxgraph-drop-indicator {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 8px;
+}
+.dxgraph-drop-parent {
+  outline: 3px solid var(--primary);
+  outline-offset: 3px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.dxgraph-drop-order {
+  background: var(--primary);
+}
+.dxgraph-connection {
+  z-index: 20;
+}

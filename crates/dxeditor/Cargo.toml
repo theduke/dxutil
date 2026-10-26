@@ -1,0 +1,49 @@
+[package]
+name = "dxeditor"
+description = "A Rust rich-text and Markdown editor for Dioxus"
+authors.workspace = true
+keywords.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme = "README.md"
+edition.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+version.workspace = true
+
+[features]
+default = ["markdown", "web"]
+markdown = ["dep:pulldown-cmark"]
+web = ["dioxus/web", "dep:web-sys", "dep:wasm-bindgen", "dep:js-sys", "dep:wasm-bindgen-futures"]
+
+[dependencies]
+dioxus = { workspace = true }
+futures = "0.3.31"
+futures-timer = { version = "3.0.3", features = ["wasm-bindgen"] }
+pulldown-cmark = { version = "0.13.0", optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sha2 = { workspace = true }
+thiserror = "2.0.17"
+url = "2.5.7"
+uuid = { workspace = true, features = ["v7", "js"] }
+unicode-segmentation = "1.12.0"
+wasm-bindgen = { version = "0.2.105", optional = true }
+js-sys = { version = "0.3.98", optional = true }
+wasm-bindgen-futures = { version = "0.4.71", optional = true }
+web-sys = { version = "0.3.98", optional = true, features = [
+  "Window", "Document", "HtmlDocument", "Element", "HtmlElement", "Node", "NodeList", "HtmlCollection", "Text", "CharacterData", "DocumentFragment",
+  "Event", "EventTarget", "AddEventListenerOptions", "InputEvent", "InputEventInit", "KeyboardEvent", "KeyboardEventInit", "DragEventInit", "FilePropertyBag", "HtmlProgressElement", "CompositionEvent", "FocusEvent", "MouseEvent", "PointerEvent",
+  "Range", "StaticRange", "AbstractRange", "Selection", "DomRect", "DomRectReadOnly", "DomRectList", "CaretPosition", "VisualViewport", "Performance",
+  "ClipboardEvent", "ClipboardEventInit", "DataTransfer", "DataTransferItem", "DataTransferItemList", "DragEvent", "File", "FileList", "Blob", "FileReader",
+  "DomParser", "SupportedType", "HtmlInputElement", "HtmlImageElement", "HtmlAnchorElement", "CssStyleDeclaration", "DomTokenList",
+  "MutationObserver", "MutationObserverInit", "MutationRecord", "ResizeObserver", "ResizeObserverEntry", "IntersectionObserver", "IntersectionObserverInit", "IntersectionObserverEntry",
+  "Navigator", "Storage", "Location", "ScrollIntoViewOptions", "ScrollBehavior", "ScrollLogicalPosition", "Url", "console"
+] }
+
+[dev-dependencies]
+dioxus-ssr = "0.7.9"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "=0.3.71"

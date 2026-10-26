@@ -1,0 +1,9 @@
+/target/
+/result
+/result-*
+.direnv/
+node_modules/
+playwright-report/
+test-results*/
+*.profraw
+.DS_Store
