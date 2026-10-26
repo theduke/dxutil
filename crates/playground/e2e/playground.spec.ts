@@ -9,7 +9,7 @@ test('crate navigation, shareable routes, history, search, theme, and reset', as
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('./');
-  await expect(page.getByRole('navigation', { name: 'Component stories' }).getByRole('link')).toHaveCount(10);
+  await expect(page.getByRole('navigation', { name: 'Component stories' }).getByRole('link')).toHaveCount(11);
   await page.getByRole('button', { name: 'Primary', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Total clicks: 1');
   await page.getByRole('button', { name: 'Reset story' }).click();
