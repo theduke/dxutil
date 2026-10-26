@@ -46,6 +46,15 @@ pub const STORIES: &[Story] = &[
         notes: "Dialog uses the Dioxus primitives focus manager. Its content and backdrop are mounted only while open.",
     },
     Story {
+        id: "spinners",
+        group: "dxcomp",
+        category: "Feedback",
+        title: "Spinners",
+        description: "Spinner for inline loading feedback and BlockSpinner for centered loading areas.",
+        instructions: "Change each size independently and edit the accessible label shared by both indicators. Compare inline text alignment with a centered loading area. Reset restores the default sizes and label.",
+        notes: "Spinner defaults to 20px; BlockSpinner defaults to 32px. Both expose a status with aria-busy=true and the label (default: Loading). Include dxcomp::Stylesheet for styling and animation; reduced-motion preferences disable the animation.",
+    },
+    Story {
         id: "virtual-list",
         group: "dxcomp",
         category: "Data display",

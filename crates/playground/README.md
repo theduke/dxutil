@@ -36,7 +36,7 @@ desktop builds.
 
 | Crate | Coverage |
 | --- | --- |
-| dxcomp | Six button variants and four sizes; disabled state; controlled input, switch, slider and progress; modal dismissal/confirmation; 10,000-row virtual list with jump and selection |
+| dxcomp | Six button variants and four sizes; disabled state; controlled input, switch, slider and progress; modal dismissal/confirmation; inline Spinner and centered BlockSpinner with size and accessible label controls; 10,000-row virtual list with jump and selection |
 | dxeditor | Controlled Markdown notes and replacement; structured message composer and submission events |
 | dxgraph | Tree, mind map, radial and force layouts; node insertion, selection, dragging, fit, zoom, controls and minimap |
 | dxform | Typed fields; blur/submit validation; error messages; dirty/touched/validity metadata; submission and reset |
