@@ -1,4 +1,41 @@
-.dxcode{height:100%;min-height:0;font:12px/1.6 ui-monospace,SFMono-Regular,monospace;color:var(--code-text,#d4d4d8);background:var(--code-background,#18181b)}.dxcode-host{height:100%;min-height:0}.dxcode .cm-editor{height:100%}.dxcode .cm-scroller{overflow:auto;font:inherit}.dxcode .cm-gutters{background:var(--code-gutter,#202023);color:var(--code-muted,#858590);border-right:1px solid var(--code-border,#33333b)}.dxcode .cm-activeLine{background:var(--code-active-line,#ffffff08)}.dxcode .cm-activeLineGutter{background:var(--code-active-line,#ffffff08)}.dxcode .cm-cursor{border-left-color:var(--code-text,#d4d4d8)}.dxcode .cm-selectionBackground{background:var(--code-selection,#435774)!important}.dxcode-fallback{overflow:auto;margin:0;padding:8px}.dxcode-line{display:block}.dxcode-number{display:inline-block;width:4em;text-align:right;padding-right:1em;color:var(--code-muted,#858590);user-select:none}.tok-keyword,.tok-operator{color:var(--code-keyword,#c792ea)}.tok-string,.tok-string2{color:var(--code-string,#c3e88d)}.tok-number,.tok-bool,.tok-atom{color:var(--code-number,#f78c6c)}.tok-comment{color:var(--code-comment,#858590)}.tok-typeName,.tok-className{color:var(--code-type,#ffcb6b)}.tok-variableName,.tok-propertyName{color:var(--code-name,#82aaff)}.tok-punctuation{color:var(--code-punctuation,#b4b4bf)}.tok-invalid{color:var(--code-invalid,#ff5370)}
-
-:root {--code-text:#29292e;--code-background:#fff;--code-gutter:#f5f5f7;--code-muted:#60606b;--code-border:#dedee4;--code-active-line:#00000008;--code-selection:#d4deef;--code-keyword:#7c3fad;--code-string:#377d30;--code-number:#a04725;--code-comment:#60606b;--code-type:#916918;--code-name:#205e9c;--code-punctuation:#555561;--code-invalid:#c52c40}
-html[data-theme=dark] {--code-text:#d4d4d8;--code-background:#18181b;--code-gutter:#202023;--code-muted:#858590;--code-border:#33333b;--code-active-line:#ffffff08;--code-selection:#435774;--code-keyword:#c792ea;--code-string:#c3e88d;--code-number:#f78c6c;--code-comment:#858590;--code-type:#ffcb6b;--code-name:#82aaff;--code-punctuation:#b4b4bf;--code-invalid:#ff5370}
+:root {
+  --code-text: #29292e; --code-background: #fff; --code-gutter: #f5f5f7;
+  --code-muted: #60606b; --code-border: #dedee4; --code-active-line: #00000008;
+  --code-selection: #d4deef; --code-keyword: #7c3fad; --code-string: #377d30;
+  --code-number: #a04725; --code-comment: #60606b; --code-type: #916918;
+  --code-name: #205e9c; --code-punctuation: #555561; --code-invalid: #c52c40;
+}
+.dxcode {
+  height: 100%; min-height: 0; overflow: auto;
+  font: 12px/20px ui-monospace, SFMono-Regular, monospace;
+  color: var(--code-text); background: var(--code-background);
+  tab-size: 4;
+}
+html[data-theme=dark] {
+  --code-text: #d4d4d8; --code-background: #18181b; --code-gutter: #202023;
+  --code-muted: #858590; --code-border: #33333b; --code-active-line: #ffffff08;
+  --code-selection: #435774; --code-keyword: #c792ea; --code-string: #c3e88d;
+  --code-number: #f78c6c; --code-comment: #858590; --code-type: #ffcb6b;
+  --code-name: #82aaff; --code-punctuation: #b4b4bf; --code-invalid: #ff5370;
+}
+.dxcode-lines { margin: 0; font: inherit; min-width: max-content; }
+.dxcode-line { height: 20px; white-space: pre; outline: none; }
+.dxcode-line[data-target=true] { background: var(--code-active-line); }
+.dxcode-number {
+  display: inline-block; position: sticky; left: 0; min-width: 4em;
+  padding: 0 1em 0 .5em; text-align: right; user-select: none;
+  color: var(--code-muted); background: var(--code-gutter);
+  border-right: 1px solid var(--code-border); margin-right: 1em;
+}
+.dxcode ::selection { background: var(--code-selection); }
+.dxcode .tok-keyword, .dxcode .tok-operator { color: var(--code-keyword); }
+.dxcode .tok-string { color: var(--code-string); }
+.dxcode .tok-number { color: var(--code-number); }
+.dxcode .tok-comment { color: var(--code-comment); }
+.dxcode .tok-type { color: var(--code-type); }
+.dxcode .tok-name, .dxcode .tok-link { color: var(--code-name); }
+.dxcode .tok-punctuation { color: var(--code-punctuation); }
+.dxcode .tok-invalid { color: var(--code-invalid); }
+.dxcode .tok-heading { color: var(--code-type); font-weight: bold; }
+.dxcode .tok-emphasis { font-style: italic; }
+.dxcode .tok-link { text-decoration: underline; }

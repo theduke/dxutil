@@ -1,6 +1,6 @@
 [package]
 name = "dxcode"
-description = "CodeMirror code editing and syntax highlighting for Dioxus"
+description = "Tree-sitter highlighting and a read-only code viewer for Dioxus"
 readme = "README.md"
 version.workspace = true
 edition.workspace = true
@@ -10,11 +10,60 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[features]
+default = ["viewer", "rust", "json"]
+viewer = ["dep:dioxus", "dep:serde_json", "dep:futures", "dep:gloo-timers"]
+# DOM conveniences are optional; token and line rendering never uses JavaScript.
+dom = ["viewer"]
+web = ["dom", "dioxus/web"]
+desktop = ["dom", "dioxus/desktop"]
+all-languages = ["rust", "javascript", "typescript", "tsx", "json", "toml", "yaml", "markdown", "html", "css", "python", "go", "bash", "sql", "c", "cpp"]
+rust = ["dep:arborium-rust"]
+javascript = ["dep:arborium-javascript"]
+typescript = ["dep:arborium-typescript"]
+tsx = ["dep:arborium-tsx"]
+json = ["dep:arborium-json"]
+toml = ["dep:arborium-toml"]
+yaml = ["dep:arborium-yaml"]
+markdown = ["dep:tree-sitter-md"]
+html = ["dep:arborium-html"]
+css = ["dep:arborium-css"]
+python = ["dep:arborium-python"]
+go = ["dep:arborium-go"]
+bash = ["dep:arborium-bash"]
+sql = ["dep:arborium-sql"]
+c = ["dep:arborium-c"]
+cpp = ["dep:arborium-cpp"]
+
 [dependencies]
-dioxus.workspace = true
+futures = { workspace = true, optional = true }
+dioxus = { workspace = true, optional = true, default-features = false, features = ["lib"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
+serde_json = { workspace = true, optional = true }
 thiserror.workspace = true
+tree-sitter = "=0.27.1"
+tree-sitter-md = { version = "0.5.1", optional = true }
+arborium-rust = { version = "=2.18.2", optional = true, default-features = false }
+arborium-javascript = { version = "=2.18.2", optional = true, default-features = false }
+arborium-typescript = { version = "=2.18.2", optional = true, default-features = false }
+arborium-tsx = { version = "=2.18.2", optional = true, default-features = false }
+arborium-json = { version = "=2.18.2", optional = true, default-features = false }
+arborium-toml = { version = "=2.18.2", optional = true, default-features = false }
+arborium-yaml = { version = "=2.18.2", optional = true, default-features = false }
+arborium-html = { version = "=2.18.2", optional = true, default-features = false }
+arborium-css = { version = "=2.18.2", optional = true, default-features = false }
+arborium-python = { version = "=2.18.2", optional = true, default-features = false }
+arborium-go = { version = "=2.18.2", optional = true, default-features = false }
+arborium-bash = { version = "=2.18.2", optional = true, default-features = false }
+arborium-sql = { version = "=2.18.2", optional = true, default-features = false }
+arborium-c = { version = "=2.18.2", optional = true, default-features = false }
+arborium-cpp = { version = "=2.18.2", optional = true, default-features = false }
 
 [dev-dependencies]
 dioxus-ssr = "0.7.9"
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "=0.3.71"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+gloo-timers = { version = "0.3.0", features = ["futures"], optional = true }
