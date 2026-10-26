@@ -4,6 +4,10 @@
 
 Dioxus components and libraries for Rust applications.
 
+Explore all six crates in the [component playground](crates/playground/README.md).
+Run `make serve-playground` for the web app or
+`make serve-playground-desktop` for a Dioxus desktop webview window.
+
 | Crate | Purpose |
 | --- | --- |
 | [`dxcomp`](crates/dxcomp/README.md) | Styled components, menus, dialogs, and virtual lists |
@@ -52,6 +56,8 @@ Run commands from the repository root:
 | `make check-headless check-wasm check-desktop` | Feature and renderer configurations |
 | `make docs` | API documentation |
 | `make install-js test-js check-bundles` | JavaScript tests, test types, and bundle reproducibility |
+| `make build-playground test-playground` | Release web playground and browser interactions |
+| `make check-playground check-playground-desktop` | Playground WASM and desktop compatibility |
 
 After editing `dxcode` or `dxterm` TypeScript, regenerate their bundles with
 `make build-js` and commit the resulting `web/dist/` files.

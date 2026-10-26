@@ -45,4 +45,5 @@ jobs:
             crates/dxcode/web/package-lock.json
             crates/dxterm/web/package-lock.json
             crates/dxeditor/e2e/package-lock.json
+            crates/playground/e2e/package-lock.json
       - run: make audit-js
