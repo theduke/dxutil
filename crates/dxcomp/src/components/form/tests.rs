@@ -465,6 +465,26 @@ mod bound {
 
 #[test]
 fn context_updates_reach_controls_with_unchanged_props() {
+    // Context writes schedule descendants even when their own props memoize.
+    // Drain the scheduler as a renderer does before inspecting the final HTML.
+    fn flush_updates(dom: &mut VirtualDom) {
+        use std::future::Future;
+        use std::task::{Context, Waker};
+
+        let mut context = Context::from_waker(Waker::noop());
+        for _ in 0..32 {
+            let ready = {
+                let work = std::pin::pin!(dom.wait_for_work());
+                work.poll(&mut context).is_ready()
+            };
+            if !ready {
+                return;
+            }
+            dom.render_immediate_to_vec();
+        }
+        panic!("field context updates did not settle");
+    }
+
     thread_local! {
         static INVALID: Cell<Option<Signal<bool>>> = const { Cell::new(None) };
     }
@@ -483,14 +503,14 @@ fn context_updates_reach_controls_with_unchanged_props() {
     dom.in_runtime(|| {
         INVALID.with(|slot| slot.get().unwrap().set(true));
     });
-    dom.render_immediate_to_vec();
+    flush_updates(&mut dom);
     let html = dioxus_ssr::render(&dom);
     assert!(html.contains("aria-invalid=\"true\""));
     assert!(html.contains("aria-describedby=\"reactive-errors\""));
     dom.in_runtime(|| {
         INVALID.with(|slot| slot.get().unwrap().set(false));
     });
-    dom.render_immediate_to_vec();
+    flush_updates(&mut dom);
     assert!(!dioxus_ssr::render(&dom).contains("aria-invalid"));
     INVALID.with(|slot| slot.set(None));
 }

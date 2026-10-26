@@ -1,4 +1,5 @@
 mod component;
 pub use component::*;
 
-pub(crate) use component::render_select;
+#[cfg(feature = "dxform")]
+pub(crate) use component::SelectContent;

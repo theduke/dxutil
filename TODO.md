@@ -1,5 +1,12 @@
 # Follow-up work
 
+- [ ] Remove the two quick-xml audit exceptions in `.cargo/audit.toml` when
+  Dioxus Native's accessibility stack upgrades past `atspi-common 0.6` /
+  `zbus-lockstep 0.4` / `zbus_xml 4`. These versions pin quick-xml 0.30, with
+  no compatible patched release. Its XML parsing is confined to build-time
+  macros and upstream signature tests over bundled protocol definitions.
+  Recheck this reachability assumption whenever updating those dependencies.
+
 - [ ] Replace the temporary `dxcomp-primitives` fork with upstream
   `dioxus-primitives` once a crates.io release provides the component APIs used
   by `dxcomp`. The current upstream `0.0.0` is a placeholder. Both

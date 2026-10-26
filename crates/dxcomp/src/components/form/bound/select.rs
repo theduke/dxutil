@@ -49,21 +49,25 @@ where
         }
     }));
     attributes.extend(caller.rest);
-    let props = dioxus_primitives::select::SelectProps::<T>::builder()
-        .value(value)
-        .disabled(control.disabled)
-        .name(caller.name.unwrap_or_default())
-        .on_open_change(move |value| open.set(value))
-        .on_value_change(move |value: Option<T>| {
-            if !control.disabled && !control.read_only {
-                if let Some(value) = value {
-                    field.handle_value_change(value);
+    let floating = crate::floating::use_floating(".dx-select-trigger", ".dx-select-list");
+    rsx! {
+        dioxus_primitives::select::Select::<T> {
+            value: Some(ReadSignal::from(value)),
+            disabled: control.disabled,
+            name: caller.name.unwrap_or_default(),
+            on_open_change: move |value| open.set(value),
+            on_value_change: move |value: Option<T>| {
+                if !control.disabled && !control.read_only {
+                    if let Some(value) = value {
+                        field.handle_value_change(value);
+                    }
                 }
-            }
-        })
-        .children(children)
-        .build();
-    crate::select::render_select(props, attributes, placeholder)
+            },
+            class: "dx-select",
+            "data-dx-floating": floating,
+            crate::select::SelectContent { trigger_attributes: attributes, placeholder, children }
+        }
+    }
 }
 
 /// One typed option in a native select, represented in HTML by its index.
@@ -149,7 +153,7 @@ where
             },
             ..attributes,
             if selected.is_none() {
-                option { value: "", disabled: true, selected: true, "{placeholder.unwrap_or_default()}" }
+                option { value: "", disabled: true, selected: true, "{placeholder.as_deref().unwrap_or_default()}" }
             }
             for (index, choice) in options.into_iter().enumerate() {
                 option {

@@ -1,0 +1,12 @@
+[advisories]
+# quick-xml 0.30 is pinned by zbus_xml 4 -> zbus-lockstep 0.4 -> atspi-common
+# 0.6 in Dioxus Native's accessibility dependencies. No compatible patched
+# release exists. atspi-common uses the XML helpers only through proc macros
+# and its own signature tests, reading protocol XML shipped with that crate;
+# application and D-Bus input never reach this parser. The separate
+# wayland-scanner dependency already uses patched quick-xml 0.41.
+# Revisit these exceptions when upgrading the accessibility stack (see TODO.md).
+ignore = [
+    "RUSTSEC-2026-0194", # Quadratic duplicate-attribute checking on hostile XML.
+    "RUSTSEC-2026-0195", # Unbounded namespace allocation on hostile XML.
+]

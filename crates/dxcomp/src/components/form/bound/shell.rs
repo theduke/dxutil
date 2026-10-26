@@ -101,7 +101,7 @@ where
     rsx! {
         div { class: "dx-form-errors", role: "alert", ..attributes,
             if !errors.is_empty() {
-                ul { for error in errors { li { "{error_message(error, format_error)}" } } }
+                ul { for error in errors { li { {error_message(error, format_error)} } } }
             }
         }
     }

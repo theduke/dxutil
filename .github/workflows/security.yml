@@ -5,7 +5,7 @@ on:
     - cron: '23 7 * * 1'
   push:
     branches: [main]
-    paths: [Cargo.lock, .github/workflows/security.yml]
+    paths: [Cargo.lock, .cargo/audit.toml, .github/workflows/security.yml]
   workflow_dispatch:
 
 permissions:

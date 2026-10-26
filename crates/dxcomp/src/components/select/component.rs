@@ -34,21 +34,29 @@ pub(crate) fn render_select<T: Clone + PartialEq + 'static>(
             roving_loop: props.roving_loop,
             typeahead_timeout: props.typeahead_timeout,
             attributes: merged,
-            select::SelectTrigger {
-                class: "dx-select-trigger",
-                attributes: trigger_attributes,
-                select::SelectValue { placeholder: placeholder.unwrap_or_else(|| "Select an option".to_string()) }
-                ChevronDown {
-                    class: "dx-select-expand-icon",
-                    size: "20px",
-                    stroke: "var(--primary-color-7)",
-                }
-            }
-            select::SelectList {
-                class: "dx-select-list",
-                {props.children}
+            SelectContent { trigger_attributes, placeholder, children: props.children }
+        }
+    }
+}
+
+#[component]
+pub(crate) fn SelectContent(
+    trigger_attributes: Vec<Attribute>,
+    placeholder: Option<String>,
+    children: Element,
+) -> Element {
+    rsx! {
+        select::SelectTrigger {
+            class: "dx-select-trigger",
+            attributes: trigger_attributes,
+            select::SelectValue { placeholder: placeholder.unwrap_or_else(|| "Select an option".to_string()) }
+            ChevronDown {
+                class: "dx-select-expand-icon",
+                size: "20px",
+                stroke: "var(--primary-color-7)",
             }
         }
+        select::SelectList { class: "dx-select-list", {children} }
     }
 }
 
