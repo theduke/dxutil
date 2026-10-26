@@ -14,8 +14,11 @@ After editor engine or DOM changes, run
 Keep browser implementation code in Rust under `crates/dxeditor/src/dom/` and
 browser tests under `crates/dxeditor/e2e/`.
 
-`dxterm` embeds committed JavaScript bundles. After changing their web
-sources, run `make test-js build-js` and commit the regenerated `web/dist/` files.
+`dxterm_core` is headless Rust; keep rio-vt types in its private adapter.
+`dxterm` shares DOM rows across web, desktop webviews and Native/Blitz. Keep JS
+and unsupported composition/clipboard/mounted/pointer/wheel/resize handlers out
+of Native paths. Use dxutil for shared IDs and clocks.
+After terminal changes, run `make test-terminal-wasm check-wasm check-desktop check-native`.
 Do not add shared abstractions until there are concrete consumers.
 
 For dxcode changes, run `make test-code-native test-code-wasm measure-code-sizes`.
