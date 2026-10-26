@@ -16,7 +16,7 @@ Run `make serve-playground` for the web app or
 | [`dxgraph`](crates/dxgraph/README.md) | Interactive graph canvas and layout algorithms |
 | [`dxform`](crates/dxform/README.md) | Typed form state, validation, and submission |
 | [`dxterm`](crates/dxterm/README.md) | xterm.js terminal component |
-| [`dxcode`](crates/dxcode/README.md) | CodeMirror editor and syntax highlighting |
+| [`dxcode`](crates/dxcode/README.md) | Tree-sitter highlighting and a read-only Rust code viewer |
 
 ## Use
 
@@ -29,8 +29,8 @@ dxcomp = { git = "https://github.com/theduke/dxutil", features = ["web"] }
 ```
 
 Each crate's README includes usage examples, styling requirements, and platform
-support. `dxcode` and `dxterm` include their JavaScript bundles; consuming them
-does not require Node.js.
+support. `dxterm` includes its JavaScript bundle. `dxcode` links its selected
+grammars statically; see its README for C compiler and wasm requirements.
 
 ## Development
 
@@ -44,7 +44,8 @@ make check lint test
 Without Nix, install stable Rust, Node.js 22, Python 3, and Make. The
 `rust-toolchain.toml` installs Rust components and the WASM target through rustup.
 Linux desktop builds also need GTK 3, WebKitGTK 4.1, libxdo, librsvg, OpenSSL
-headers, and pkg-config.
+headers, and pkg-config. `dxcode` grammars need a C compiler; wasm builds need
+a wasm-capable clang (LLVM clang, not Apple clang).
 
 Run commands from the repository root:
 
@@ -55,12 +56,14 @@ Run commands from the repository root:
 | `make test` | Native tests and doctests |
 | `make fmt` | Formatting; use `cargo fmt --all` to apply it |
 | `make check-headless check-wasm check-desktop` | Feature and renderer configurations |
+| `make test-code-native test-code-wasm` | Highlighter golden tests and real WASM runtime tests |
+| `make measure-code-sizes` | Core WASM sizes for each grammar feature set |
 | `make docs` | API documentation |
 | `make install-js test-js check-bundles` | JavaScript tests, test types, and bundle reproducibility |
 | `make build-playground test-playground` | Release web playground and browser interactions |
 | `make check-playground check-playground-desktop` | Playground WASM and desktop compatibility |
 
-After editing `dxcode` or `dxterm` TypeScript, regenerate their bundles with
+After editing `dxterm` TypeScript, regenerate its bundle with
 `make build-js` and commit the resulting `web/dist/` files.
 
 The [editor browser suite](crates/dxeditor/e2e/README.md) tests Chromium, Firefox,

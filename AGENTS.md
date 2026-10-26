@@ -14,6 +14,8 @@ After editor engine or DOM changes, run
 Keep browser implementation code in Rust under `crates/dxeditor/src/dom/` and
 browser tests under `crates/dxeditor/e2e/`.
 
-`dxcode` and `dxterm` embed committed JavaScript bundles. After changing their web
+`dxterm` embeds committed JavaScript bundles. After changing their web
 sources, run `make test-js build-js` and commit the regenerated `web/dist/` files.
 Do not add shared abstractions until there are concrete consumers.
+
+For dxcode changes, run `make test-code-native test-code-wasm measure-code-sizes`.

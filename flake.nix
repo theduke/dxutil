@@ -35,10 +35,12 @@
           });
           shell = pkgs.mkShell {
             packages = (with pkgs; [
-              rust pkg-config nodejs_22 python3 gnumake git
+              rust pkg-config nodejs_22 python3 gnumake git llvmPackages.clang llvmPackages.llvm
               dioxus-cli wasm-bindgen-cli binaryen actionlint shellcheck
             ]) ++ lib.optionals pkgs.stdenv.isLinux
               (with pkgs; [ chromium chromedriver playwright-driver.browsers ]);
+            CC_wasm32_unknown_unknown = "${pkgs.llvmPackages.clang}/bin/clang";
+            AR_wasm32_unknown_unknown = "${pkgs.llvmPackages.llvm}/bin/llvm-ar";
             buildInputs = nativeLibraries;
             LD_LIBRARY_PATH = lib.optionalString pkgs.stdenv.isLinux
               (lib.makeLibraryPath nativeLibraries);
