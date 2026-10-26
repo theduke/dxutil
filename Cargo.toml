@@ -42,7 +42,7 @@ dioxus-ssr = "0.7.9"
 # Retain upstream dependency names to preserve existing imports and re-exports.
 dioxus-attributes = { package = "dxcomp-attributes", version = "0.0.1", path = "crates/dxcomp-attributes" }
 dioxus-primitives = { package = "dxcomp-primitives", version = "0.0.1", path = "crates/dxcomp-primitives" }
-dxcode = { version = "0.0.1", path = "crates/dxcode" }
+dxhighlight = { version = "0.0.1", path = "crates/dxhighlight" }
 dxcomp = { version = "0.0.1", path = "crates/dxcomp" }
 dxeditor = { version = "0.0.1", path = "crates/dxeditor", default-features = false }
 dxform = { version = "0.0.1", path = "crates/dxform" }

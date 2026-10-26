@@ -17,7 +17,7 @@ Run `make serve-playground` for the web app or
 | [`dxform`](crates/dxform/README.md) | Typed form state, validation, and submission |
 | [`dxterm`](crates/dxterm/README.md) | Rust terminal component for Dioxus |
 | [`dxterm_core`](crates/dxterm_core/README.md) | Headless terminal model and input encoding |
-| [`dxcode`](crates/dxcode/README.md) | Tree-sitter highlighting and a read-only Rust code viewer |
+| [`dxhighlight`](crates/dxhighlight/README.md) | Tree-sitter highlighting and a read-only Rust code viewer |
 | [`dxcomp-primitives`](crates/dxcomp-primitives/README.md) | Temporary fork of upstream `dioxus-primitives` |
 | [`dxcomp-attributes`](crates/dxcomp-attributes/README.md) | Companion fork of upstream attribute macros |
 
@@ -32,7 +32,7 @@ dxcomp = { git = "https://github.com/theduke/dxutil", features = ["web"] }
 ```
 
 Each crate's README includes usage examples, styling requirements, and platform
-support. Both terminal crates are written in Rust. `dxcode` links its selected
+support. Both terminal crates are written in Rust. `dxhighlight` links its selected
 grammars statically; see its README for C compiler and wasm requirements.
 
 ## Development
@@ -47,7 +47,7 @@ make check lint test
 Without Nix, install stable Rust, Node.js 22, Python 3, and Make. The
 `rust-toolchain.toml` installs Rust components and the WASM target through rustup.
 Linux desktop builds also need GTK 3, WebKitGTK 4.1, libxdo, librsvg, OpenSSL
-headers, and pkg-config. `dxcode` grammars need a C compiler; wasm builds need
+headers, and pkg-config. `dxhighlight` grammars need a C compiler; wasm builds need
 a wasm-capable clang (LLVM clang, not Apple clang).
 
 Run commands from the repository root:

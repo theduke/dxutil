@@ -35,10 +35,10 @@ check-headless:
 	cargo check --workspace --exclude dxeditor_harness --all-targets --no-default-features --locked --quiet --message-format=short
 
 check-wasm:
-	cargo check --workspace --all-targets --target wasm32-unknown-unknown --features dxcomp/web,dxcomp/dxform,dxeditor/web,dxgraph/web,dxutil/web,dxcode/web,dxcode/all-languages,dxterm/web --locked --quiet --message-format=short
+	cargo check --workspace --all-targets --target wasm32-unknown-unknown --features dxcomp/web,dxcomp/dxform,dxeditor/web,dxgraph/web,dxutil/web,dxhighlight/web,dxhighlight/all-languages,dxterm/web --locked --quiet --message-format=short
 
 check-desktop:
-	cargo check -p dxcomp -p dxgraph -p dxcode -p dxterm --all-targets --no-default-features --features dxcomp/desktop,dxcomp/dxform,dxgraph/demo,dxcode/desktop,dxcode/all-languages,dxterm/desktop --locked --quiet --message-format=short
+	cargo check -p dxcomp -p dxgraph -p dxhighlight -p dxterm --all-targets --no-default-features --features dxcomp/desktop,dxcomp/dxform,dxgraph/demo,dxhighlight/desktop,dxhighlight/all-languages,dxterm/desktop --locked --quiet --message-format=short
 	$(MAKE) check-playground-desktop
 
 check-native:
@@ -101,14 +101,14 @@ audit-rust:
 .PHONY: test-code-native test-code-wasm measure-code-sizes
 
 test-code-native:
-	cargo test -p dxcode --features all-languages --locked --quiet --message-format=short
+	cargo test -p dxhighlight --features all-languages --locked --quiet --message-format=short
 
 # wasm-bindgen-test-runner does not accept Cargo's forwarded --quiet flag.
 test-code-wasm:
-	cargo test -p dxcode --no-default-features --features viewer,rust,json,markdown --lib --test wasm_runtime --target wasm32-unknown-unknown --locked --message-format=short
+	cargo test -p dxhighlight --no-default-features --features viewer,rust,json,markdown --lib --test wasm_runtime --target wasm32-unknown-unknown --locked --message-format=short
 
 measure-code-sizes:
-	bash crates/dxcode/scripts/measure-sizes.sh
+	bash crates/dxhighlight/scripts/measure-sizes.sh
 
 .PHONY: check-form test-form
 check-form:

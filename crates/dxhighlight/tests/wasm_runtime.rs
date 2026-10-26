@@ -4,7 +4,7 @@
     feature = "markdown",
     feature = "json"
 ))]
-use dxcode::{HighlightSession, TextEdit, TokenKind};
+use dxhighlight::{HighlightSession, TextEdit, TokenKind};
 use wasm_bindgen_test::wasm_bindgen_test;
 
 // Run in Node by default; WASM_BINDGEN_USE_BROWSER=1 also supports a browser.

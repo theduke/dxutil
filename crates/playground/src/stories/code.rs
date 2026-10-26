@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use dxcode::{CodeView, LineTarget};
+use dxhighlight::{CodeView, LineTarget};
 use dxcomp::button::{Button, ButtonVariant};
 
 fn sample(path: &str) -> &'static str {
@@ -35,7 +35,7 @@ pub fn Code() -> Element {
         div { class: "code-surface",
             CodeView {
                 value: value(), path: Some(path()), goto: goto(),
-                on_selection: move |selected: dxcode::CodeSelection| selection.set(format!("Lines {}–{} · {} selected characters", selected.start_line, selected.end_line, selected.text.chars().count())),
+                on_selection: move |selected: dxhighlight::CodeSelection| selection.set(format!("Lines {}–{} · {} selected characters", selected.start_line, selected.end_line, selected.text.chars().count())),
             }
         }
         div { class: "state-line", role: "status", "{selection}" }

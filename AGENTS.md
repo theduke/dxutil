@@ -21,4 +21,4 @@ of Native paths. Use dxutil for shared IDs and clocks.
 After terminal changes, run `make test-terminal-wasm check-wasm check-desktop check-native`.
 Do not add shared abstractions until there are concrete consumers.
 
-For dxcode changes, run `make test-code-native test-code-wasm measure-code-sizes`.
+For dxhighlight changes, run `make test-code-native test-code-wasm measure-code-sizes`.

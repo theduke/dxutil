@@ -16,8 +16,8 @@ readme = "README.md"
 
 [features]
 default = []
-web = ["dioxus/web", "dxcomp/web", "dxeditor/web", "dxgraph/web", "dxcode/web", "dxterm/web"]
-desktop = ["dioxus/desktop", "dxcomp/desktop", "dxcode/desktop", "dxterm/desktop"]
+web = ["dioxus/web", "dxcomp/web", "dxeditor/web", "dxgraph/web", "dxhighlight/web", "dxterm/web"]
+desktop = ["dioxus/desktop", "dxcomp/desktop", "dxhighlight/desktop", "dxterm/desktop"]
 
 [dependencies]
 dioxus = { workspace = true, default-features = true, features = ["router"] }
@@ -25,6 +25,6 @@ dxcomp = { workspace = true, features = ["dxform"] }
 dxeditor = { workspace = true, default-features = false, features = ["markdown"] }
 dxgraph.workspace = true
 dxform.workspace = true
-dxcode = { workspace = true, features = ["typescript"] }
+dxhighlight = { workspace = true, features = ["typescript"] }
 dxterm.workspace = true
 serde_json.workspace = true

@@ -1,8 +1,8 @@
 #[cfg(feature = "rust")]
-use dxcode::language_named;
-use dxcode::{HighlightSession, highlight_lines, language_for_path, languages};
+use dxhighlight::language_named;
+use dxhighlight::{HighlightSession, highlight_lines, language_for_path, languages};
 #[cfg(feature = "rust")]
-use dxcode::{TextEdit, TokenKind};
+use dxhighlight::{TextEdit, TokenKind};
 
 #[cfg(any(
     feature = "rust",
@@ -240,13 +240,13 @@ fn markdown_without_final_newline_preserves_public_offsets() {
             .highlight_all()
             .unwrap()
             .iter()
-            .any(|s| s.kind == dxcode::TokenKind::Heading
+            .any(|s| s.kind == dxhighlight::TokenKind::Heading
                 && &session.text()[s.range.clone()] == "café😀")
     );
     for replacement in ["\n", "tail", "\r\n", ""] {
         let end = session.text().len();
         let ranges = session
-            .apply_edit(dxcode::TextEdit {
+            .apply_edit(dxhighlight::TextEdit {
                 range: end..end,
                 replacement: replacement.into(),
             })

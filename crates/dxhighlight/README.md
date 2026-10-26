@@ -1,4 +1,4 @@
-# dxcode
+# dxhighlight
 
 Tree-sitter highlighting in Rust and a read-only Dioxus code viewer. No editor,
 JavaScript bundle, Node build step or runtime grammar download is required.
@@ -8,12 +8,12 @@ JavaScript bundle, Node build step or runtime grammar download is required.
 ```toml
 [dependencies]
 dioxus = { version = "0.7.9", features = ["web"] }
-dxcode = { git = "https://github.com/theduke/dxutil", features = ["web", "markdown"] }
+dxhighlight = { git = "https://github.com/theduke/dxutil", features = ["web", "markdown"] }
 ```
 
 ```rust
 use dioxus::prelude::*;
-use dxcode::{CodeView, LineTarget};
+use dxhighlight::{CodeView, LineTarget};
 
 fn Example() -> Element {
     rsx! {
@@ -49,11 +49,11 @@ The core has no Dioxus dependency. For a core-only consumer, disable defaults an
 select grammar features explicitly:
 
 ```toml
-dxcode = { git = "https://github.com/theduke/dxutil", default-features = false, features = ["rust", "json"] }
+dxhighlight = { git = "https://github.com/theduke/dxutil", default-features = false, features = ["rust", "json"] }
 ```
 
 ```rust
-use dxcode::{HighlightSession, TextEdit, highlight_lines};
+use dxhighlight::{HighlightSession, TextEdit, highlight_lines};
 
 let rows = highlight_lines("rust", &["let café = 42;"])?;
 let mut session = HighlightSession::new("rust", "let café = 42;\n")?;
@@ -65,7 +65,7 @@ let changed = session.apply_edit(TextEdit {
 for range in changed {
     let updated = session.highlight(range)?;
 }
-# Ok::<(), dxcode::CodeError>(())
+# Ok::<(), dxhighlight::CodeError>(())
 ```
 
 `highlight_lines` is synchronous and parses the supplied lines together, retaining
@@ -143,7 +143,7 @@ export CC_wasm32_unknown_unknown="$(brew --prefix llvm)/bin/clang"
 export AR_wasm32_unknown_unknown="$(brew --prefix llvm)/bin/llvm-ar"
 # Linux, for example:
 export CC_wasm32_unknown_unknown=clang-18
-cargo check --target wasm32-unknown-unknown --features dxcode/web --locked
+cargo check --target wasm32-unknown-unknown --features dxhighlight/web --locked
 ```
 
 The Nix `ui` shell includes LLVM clang and configures these target variables.

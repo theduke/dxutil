@@ -14,7 +14,7 @@ pub const GROUPS: &[(&str, &str)] = &[
     ("dxgraph", "Spatial interfaces"),
     ("dxform", "Typed state & validation"),
     ("dxterm", "Terminal surfaces"),
-    ("dxcode", "Source code editing"),
+    ("dxhighlight", "Source code editing"),
 ];
 
 pub const STORIES: &[Story] = &[
@@ -119,7 +119,7 @@ pub const STORIES: &[Story] = &[
     },
     Story {
         id: "code",
-        group: "dxcode",
+        group: "dxhighlight",
         category: "Editor",
         title: "Code viewer",
         description: "Read-only source highlighting with language detection, selection, and line navigation.",

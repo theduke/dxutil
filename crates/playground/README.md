@@ -1,7 +1,7 @@
 # dxutil playground
 
 One component browser for `dxcomp`, `dxeditor`, `dxgraph`, `dxform`, `dxterm`,
-and `dxcode`. Stories use the real public components with local, disposable
+and `dxhighlight`. Stories use the real public components with local, disposable
 state. Search by component or crate, change controls, inspect Rust source,
 switch themes, constrain the preview width, or reset a story.
 
@@ -41,7 +41,7 @@ desktop builds.
 | dxgraph | Tree, mind map, radial and force layouts; node insertion, selection, dragging, fit, zoom, controls and minimap |
 | dxform | Typed fields; blur/submit validation; error messages; dirty/touched/validity metadata; submission and reset |
 | dxterm | ANSI sample output, local echo, reset, font size, resize, selection and link event feedback |
-| dxcode | Read-only Rust/TypeScript/JSON highlighting and language detection; selection callbacks; line navigation |
+| dxhighlight | Read-only Rust/TypeScript/JSON highlighting and language detection; selection callbacks; line navigation |
 
 The browser is a curated set of integration examples, not an exhaustive catalog.
 It does not cover every dxcomp primitive, structured block document editing,

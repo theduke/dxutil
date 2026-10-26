@@ -5,7 +5,7 @@ cd "$(dirname "$0")/../../.."
 : "${WASM_OPT:=wasm-opt}"
 : "${CC_wasm32_unknown_unknown:=clang}"
 export CC_wasm32_unknown_unknown
-output="${CARGO_TARGET_DIR:-target}/dxcode-sizes"
+output="${CARGO_TARGET_DIR:-target}/dxhighlight-sizes"
 mkdir -p "$output"
 printf '| Features | Raw bytes | Optimized bytes | Gzip bytes | Build seconds |\n'
 printf '| --- | ---: | ---: | ---: | ---: |\n'
@@ -19,7 +19,7 @@ for config in none rust default all-languages; do
     start=$SECONDS
     CARGO_PROFILE_RELEASE_OPT_LEVEL=s CARGO_PROFILE_RELEASE_LTO=true \
         CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1 CARGO_PROFILE_RELEASE_PANIC=abort \
-        cargo build -p dxcode --example size_probe --release --target wasm32-unknown-unknown \
+        cargo build -p dxhighlight --example size_probe --release --target wasm32-unknown-unknown \
         --locked --quiet --message-format=short "${args[@]}"
     elapsed=$((SECONDS - start))
     source="${CARGO_TARGET_DIR:-target}/wasm32-unknown-unknown/release/examples/size_probe.wasm"

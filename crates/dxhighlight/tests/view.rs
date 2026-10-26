@@ -1,6 +1,6 @@
 #![cfg(all(feature = "viewer", not(target_arch = "wasm32")))]
 use dioxus::prelude::*;
-use dxcode::{CodeView, LineTarget};
+use dxhighlight::{CodeView, LineTarget};
 
 fn render(app: fn() -> Element) -> String {
     let mut dom = VirtualDom::new(app);
@@ -18,7 +18,7 @@ fn tokens_numbers_and_goto_in_ssr() {
         } }
     });
     assert!(html.contains("class=\"tok-keyword\">fn</span>"));
-    assert!(html.contains("class=\"dxcode-number\""));
+    assert!(html.contains("class=\"dxhighlight-number\""));
     assert!(html.contains("data-line=\"2\" data-target=\"true\" data-column=\"4\""));
     assert!(html.contains("data-line-count=\"3\""));
     assert!(!html.contains("\r"));
@@ -32,7 +32,7 @@ fn plain_text_and_no_numbers() {
     );
     assert!(html.contains("&#60;plain&#62; &#38; 😀"));
     // The stylesheet contains the class name, so inspect actual elements.
-    assert!(!html.contains("class=\"dxcode-number\""));
+    assert!(!html.contains("class=\"dxhighlight-number\""));
     assert!(html.contains("data-line=\"1\""));
 }
 
@@ -46,7 +46,7 @@ fn viewport_and_distant_goto() {
     });
     assert!(html.contains("data-line-count=\"8001\""));
     assert!(html.contains("data-line=\"4000\" data-target=\"true\""));
-    assert!(html.matches("class=\"dxcode-line\"").count() <= 64);
+    assert!(html.matches("class=\"dxhighlight-line\"").count() <= 64);
     assert!(!html.contains("data-line=\"8000\""));
 }
 
@@ -59,5 +59,5 @@ fn large_input_renders_plain_rows_before_background_highlighting() {
     });
     assert!(html.contains("data-highlight-pending=\"true\""));
     assert!(html.contains("fn main() {}"));
-    assert!(html.matches("class=\"dxcode-line\"").count() <= 144);
+    assert!(html.matches("class=\"dxhighlight-line\"").count() <= 144);
 }

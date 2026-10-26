@@ -1,8 +1,8 @@
 //! Core-only size probe. An exported entry keeps parsing and querying reachable.
-use dxcode::{HighlightSession, languages};
+use dxhighlight::{HighlightSession, languages};
 
 #[unsafe(no_mangle)]
-pub extern "C" fn dxcode_size_probe(language: usize, repetitions: usize) -> usize {
+pub extern "C" fn dxhighlight_size_probe(language: usize, repetitions: usize) -> usize {
     let name = languages().get(language).map_or("unknown", |l| l.name);
     let source = "fn main() { let x = 42; }\n".repeat(repetitions.min(100));
     HighlightSession::new(name, source)
@@ -11,5 +11,5 @@ pub extern "C" fn dxcode_size_probe(language: usize, repetitions: usize) -> usiz
 }
 
 fn main() {
-    std::hint::black_box(dxcode_size_probe(0, 1));
+    std::hint::black_box(dxhighlight_size_probe(0, 1));
 }

@@ -75,7 +75,7 @@ pub fn CodeView(
     #[props(default = true)] line_numbers: bool,
     #[props(default = Some(120))] viewport_lines: Option<usize>,
 ) -> Element {
-    let id = use_hook(|| format!("dxcode-{}", NEXT_ID.fetch_add(1, Ordering::Relaxed)));
+    let id = use_hook(|| format!("dxhighlight-{}", NEXT_ID.fetch_add(1, Ordering::Relaxed)));
     let document = use_memo(use_reactive((&value, &path), |(value, path)| {
         Document::new(value, path)
     }));
@@ -131,7 +131,7 @@ pub fn CodeView(
         style { "{CSS}" }
         div {
             id,
-            class: "dxcode",
+            class: "dxhighlight",
             role: "region",
             "aria-label": "Code viewer",
             "data-line-count": "{count}",
@@ -151,12 +151,12 @@ pub fn CodeView(
             onmouseup: move |_| selection(&selection_id, on_selection),
             onkeyup: move |_| selection(&key_selection_id, on_selection),
             pre {
-                class: "dxcode-lines",
+                class: "dxhighlight-lines",
                 if start > 0 { div { "aria-hidden": "true", style: "height:{start * LINE_HEIGHT}px" } }
                 for row in rows {
                     div {
                         key: "{row.number}:{goto.as_ref().is_some_and(|t| t.line as usize == row.number)}",
-                        class: "dxcode-line",
+                        class: "dxhighlight-line",
                         "data-line": "{row.number}",
                         "data-target": if goto.as_ref().is_some_and(|t| t.line as usize == row.number) { "true" } else { "false" },
                         "data-column": goto.as_ref().filter(|t| t.line as usize == row.number).and_then(|t| t.column).map(|c| c.to_string()),
@@ -170,8 +170,8 @@ pub fn CodeView(
                                 }
                             }
                         },
-                        if line_numbers { span { class: "dxcode-number", "aria-hidden": "true", "{row.number}" } }
-                        span { class: "dxcode-text", for (text, class) in row.parts { span { class, "{text}" } } "\n" }
+                        if line_numbers { span { class: "dxhighlight-number", "aria-hidden": "true", "{row.number}" } }
+                        span { class: "dxhighlight-text", for (text, class) in row.parts { span { class, "{text}" } } "\n" }
                     }
                 }
                 if end < count { div { "aria-hidden": "true", style: "height:{(count - end) * LINE_HEIGHT}px" } }
@@ -199,7 +199,7 @@ const row = n => (n?.nodeType === 1 ? n : n?.parentElement)?.closest('[data-line
 const a = row(s?.anchorNode), b = row(s?.focusNode);
 if (host && s && !s.isCollapsed && a && b && host.contains(a) && host.contains(b)) {{
     const range = s.getRangeAt(0).cloneContents();
-    range.querySelectorAll('.dxcode-number').forEach(n => n.remove());
+    range.querySelectorAll('.dxhighlight-number').forEach(n => n.remove());
     dioxus.send({{start_line: Math.min(+a.dataset.line, +b.dataset.line), end_line: Math.max(+a.dataset.line, +b.dataset.line), text: range.textContent}});
 }} else {{ dioxus.send(null); }}
 "#
