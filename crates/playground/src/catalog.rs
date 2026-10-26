@@ -103,9 +103,9 @@ pub const STORIES: &[Story] = &[
         id: "code",
         group: "dxcode",
         category: "Editor",
-        title: "Code editor",
-        description: "Controlled source editing with language detection, read-only mode, and line navigation.",
-        instructions: "Switch between Rust, TypeScript, and JSON. Edit source, select text, jump to line 3, and press Ctrl/Cmd+S to record a local save.",
-        notes: "CodeView uses its bundled CodeMirror engine in web and desktop webviews. This story demonstrates editing; token highlighting APIs and large-file performance are not covered.",
+        title: "Code viewer",
+        description: "Read-only source highlighting with language detection, selection, and line navigation.",
+        instructions: "Switch between Rust, TypeScript, and JSON. Select text and jump to line 3.",
+        notes: "CodeView renders Rust tree-sitter highlighting as read-only rows. The highlight API and large-file performance are not covered.",
     },
 ];

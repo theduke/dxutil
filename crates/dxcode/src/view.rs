@@ -139,8 +139,14 @@ pub fn CodeView(
             "data-first-line": "{start + 1}",
             "data-last-line": "{end}",
             onscroll: move |event| {
-                scroll_line.set((event.scroll_top().max(0.0) as usize) / LINE_HEIGHT);
-                measured_rows.set((event.client_height().max(1) as usize).div_ceil(LINE_HEIGHT).max(viewport_lines.unwrap_or(1)));
+                let next_line = (event.scroll_top().max(0.0) as usize) / LINE_HEIGHT;
+                if *scroll_line.peek() != next_line {
+                    scroll_line.set(next_line);
+                }
+                let next_rows = (event.client_height().max(1) as usize).div_ceil(LINE_HEIGHT).max(viewport_lines.unwrap_or(1));
+                if *measured_rows.peek() != next_rows {
+                    measured_rows.set(next_rows);
+                }
             },
             onmouseup: move |_| selection(&selection_id, on_selection),
             onkeyup: move |_| selection(&key_selection_id, on_selection),

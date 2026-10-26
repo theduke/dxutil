@@ -8,8 +8,8 @@ publish = false
 
 [features]
 default = []
-web = ["dioxus/web", "dxcomp/web", "dxeditor/web", "dxgraph/web"]
-desktop = ["dioxus/desktop", "dxcomp/desktop"]
+web = ["dioxus/web", "dxcomp/web", "dxeditor/web", "dxgraph/web", "dxcode/web"]
+desktop = ["dioxus/desktop", "dxcomp/desktop", "dxcode/desktop"]
 
 [dependencies]
 dioxus = { workspace = true, features = ["router"] }
@@ -17,7 +17,7 @@ dxcomp = { path = "../dxcomp" }
 dxeditor = { path = "../dxeditor", default-features = false, features = ["markdown"] }
 dxgraph = { path = "../dxgraph" }
 dxform = { path = "../dxform" }
-dxcode = { path = "../dxcode" }
+dxcode = { path = "../dxcode", features = ["typescript"] }
 dxterm = { path = "../dxterm" }
 base64 = "0.22.1"
 serde_json.workspace = true

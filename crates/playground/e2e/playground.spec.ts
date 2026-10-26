@@ -111,7 +111,7 @@ test('form validation prevents invalid submission and reset clears saved state',
   await expect(page.getByRole('status')).toContainText('No profile saved yet');
 });
 
-test('terminal writes and code editing use the bundled engines', async ({ page }) => {
+test('terminal writes and read-only code highlighting', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await openStory(page, 'terminal', 'ANSI terminal');
@@ -124,19 +124,18 @@ test('terminal writes and code editing use the bundled engines', async ({ page }
   await page.getByLabel('Font size').selectOption('18');
   await page.getByRole('button', { name: 'Narrow preview' }).click();
   await expect(page.locator('.preview')).toHaveClass(/narrow/);
-  await openStory(page, 'code', 'Code editor');
-  await expect(page.locator('.cm-editor')).toBeVisible();
+  await openStory(page, 'code', 'Code viewer');
+  await expect(page.locator('.dxcode')).toBeVisible();
+  await expect(page.locator('.dxcode-line').first()).toBeVisible();
+  await expect(page.locator('.dxcode .tok-keyword').first()).toBeVisible();
+  await page.getByLabel('Language').selectOption('app.ts');
+  await expect(page.locator('.dxcode')).toContainText('interface Project');
+  await expect(page.locator('.dxcode .tok-type').first()).toBeVisible();
   await page.getByLabel('Language').selectOption('package.json');
-  await expect(page.locator('.cm-content')).toContainText('playground');
+  await expect(page.locator('.dxcode')).toContainText('playground');
+  await expect(page.locator('.dxcode .tok-string').first()).toBeVisible();
   await page.getByRole('button', { name: 'Go to line 3' }).click();
-  await expect(page.getByRole('status')).toContainText('Lines 3–3');
-  await page.locator('.cm-content').click();
-  await page.keyboard.press('Control+End');
-  await page.keyboard.type(' ');
-  await page.keyboard.press('Control+s');
-  await expect(page.getByRole('status')).toContainText('1 local saves');
-  await page.getByLabel('Read only', { exact: true }).check();
-  await expect(page.locator('.cm-content')).toHaveAttribute('contenteditable', 'false');
+  await expect(page.locator('.dxcode-line[data-line="3"]')).toHaveAttribute('data-target', 'true');
   await page.getByRole('link', { name: 'Buttons', exact: true }).click();
   expect(errors).toEqual([]);
 });

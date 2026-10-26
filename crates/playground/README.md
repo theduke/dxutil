@@ -24,8 +24,8 @@ For a desktop window using Dioxus's native **webview** renderer:
 make serve-playground-desktop
 ```
 
-This app does not target the separate `dioxus-native` renderer. CodeMirror,
-xterm.js, and several dxcomp interactions require a DOM and JavaScript
+This app does not target the separate `dioxus-native` renderer.
+xterm.js and several dxcomp interactions require a DOM and JavaScript
 evaluation. The app itself uses Dioxus APIs rather than direct browser bindings.
 On web WASM, dxeditor uses its rich-text DOM implementation; on desktop,
 Markdown and the composer use the crate's textarea fallbacks. GTK 3,
@@ -41,14 +41,13 @@ desktop builds.
 | dxgraph | Tree, mind map, radial and force layouts; node insertion, selection, dragging, fit, zoom, controls and minimap |
 | dxform | Typed fields; blur/submit validation; error messages; dirty/touched/validity metadata; submission and reset |
 | dxterm | ANSI sample output, local echo, reset, font size, resize, selection and link event feedback |
-| dxcode | Rust/TypeScript/JSON editing and language detection; read-only mode; selection and save callbacks; line navigation |
+| dxcode | Read-only Rust/TypeScript/JSON highlighting and language detection; selection callbacks; line navigation |
 
 The browser is a curated set of integration examples, not an exhaustive catalog.
 It does not cover every dxcomp primitive, structured block document editing,
 suggestions/uploads, nested or asynchronous forms, graph connection editing,
 highlight token APIs, or large-file performance. The terminal is not a shell:
-it executes nothing and has no PTY transport. Form submission and code saves
-update local state only. Navigating away unmounts a story and discards its state.
+it executes nothing and has no PTY transport. Form submission updates local state only. Navigating away unmounts a story and discards its state.
 Each crate has its own module under `src/stories/`.
 
 The current Markdown importer preserves some inline formatting inside list

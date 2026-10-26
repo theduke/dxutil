@@ -16,7 +16,6 @@ updates:
         patterns: ["*"]
   - package-ecosystem: npm
     directories:
-      - /crates/dxcode/web
       - /crates/dxterm/web
       - /crates/dxeditor/e2e
       - /crates/playground/e2e
