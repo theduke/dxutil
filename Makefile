@@ -26,7 +26,7 @@ check-headless:
 	cargo check --workspace --exclude dxeditor_harness --all-targets --no-default-features --locked --quiet --message-format=short
 
 check-wasm:
-	cargo check --workspace --all-targets --target wasm32-unknown-unknown --features dxcomp/web,dxeditor/web,dxgraph/web --locked --quiet --message-format=short
+	cargo check --workspace --all-targets --target wasm32-unknown-unknown --features dxcomp/web,dxeditor/web,dxgraph/web,dxutil/web --locked --quiet --message-format=short
 
 check-desktop:
 	cargo check -p dxcomp -p dxgraph --all-targets --no-default-features --features dxcomp/desktop,dxgraph/demo --locked --quiet --message-format=short

@@ -174,9 +174,7 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             if inside_island(&event, &host.borrow().root) {
                 return;
             }
-            host.borrow_mut().last_composition = web_sys::window()
-                .and_then(|w| w.performance())
-                .map_or(0., |p| p.now());
+            host.borrow_mut().last_composition = dxutil::time::now_ms();
             read_back(host);
             host.borrow_mut().composing = None;
             let uid = host
@@ -231,9 +229,7 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         if key.is_composing() || key.key_code() == 229 || host.borrow().composing.is_some() {
             return;
         }
-        let now = web_sys::window()
-            .and_then(|w| w.performance())
-            .map_or(0., |p| p.now());
+        let now = dxutil::time::now_ms();
         if key.key() == "Enter"
             && host.borrow().safari
             && now - host.borrow().last_composition < 500.

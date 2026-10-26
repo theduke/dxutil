@@ -12,10 +12,7 @@ use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,
     rc::Rc,
-    sync::atomic::{AtomicU64, Ordering},
 };
-
-static NEXT_EDITOR: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct ComponentChange {
@@ -295,12 +292,7 @@ pub fn ComponentEditor(
     #[props(default)] onfocus: Option<EventHandler<FocusEvent>>,
     #[props(default)] onkeydown: Option<EventHandler<KeyboardEvent>>,
 ) -> Element {
-    let session = use_hook(|| {
-        format!(
-            "rust-editor-{}",
-            NEXT_EDITOR.fetch_add(1, Ordering::Relaxed)
-        )
-    });
+    let session = dxutil::id::use_unique_id("rust-editor");
     let profile = if catalog
         .component_specs()
         .spec_by_id("opaque_markdown")

@@ -14,17 +14,18 @@ version.workspace = true
 
 [features]
 default = []
-web = ["dep:web-sys", "dep:wasm-bindgen"]
+web = ["dxutil/web", "dep:web-sys", "dep:wasm-bindgen"]
 demo = ["dioxus/desktop"]
 
 [dependencies]
 dioxus = { workspace = true }
 dioxus-sdk-time = "0.7.0"
 dxcomp = { path = "../dxcomp" }
+dxutil = { path = "../dxutil" }
 serde = { workspace = true, features = ["derive"] }
 indexmap = { version = "2", features = ["serde"] }
 thiserror = "2.0.17"
-web-sys = { version = "0.3.82", optional = true, features = ["Element", "HtmlElement", "FocusOptions", "Performance", "Window", "DomRect", "Event", "EventTarget", "MediaQueryList"] }
+web-sys = { version = "0.3.82", optional = true, features = ["Element", "HtmlElement", "FocusOptions", "Window", "DomRect", "Event", "EventTarget", "MediaQueryList"] }
 wasm-bindgen = { version = "0.2", optional = true }
 
 [dev-dependencies]

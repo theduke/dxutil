@@ -14,6 +14,7 @@ homepage.workspace = true
 dioxus = { workspace = true, features = ["router"] }
 dioxus-icons = "0.1.0"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/dioxus-components", rev = "02801f27e4b3e30606e5c77e435c9d955c708eb3" }
+dxutil = { path = "../dxutil" }
 palette = "0.7.6"
 serde.workspace = true
 time = { workspace = true, features = ["macros"] }

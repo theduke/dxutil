@@ -2733,6 +2733,7 @@ dependencies = [
  "dioxus-icons",
  "dioxus-primitives",
  "dioxus-ssr",
+ "dxutil",
  "palette",
  "serde",
  "time",
@@ -2744,6 +2745,7 @@ version = "0.0.1"
 dependencies = [
  "dioxus",
  "dioxus-ssr",
+ "dxutil",
  "futures",
  "futures-timer",
  "js-sys",
@@ -2790,6 +2792,7 @@ dependencies = [
  "dioxus-sdk-time",
  "dioxus-ssr",
  "dxcomp",
+ "dxutil",
  "indexmap",
  "serde",
  "serde_json",
@@ -2822,6 +2825,15 @@ dependencies = [
  "futures",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "dxutil"
+version = "0.0.1"
+dependencies = [
+ "dioxus",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]

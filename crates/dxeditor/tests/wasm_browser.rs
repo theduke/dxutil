@@ -16,6 +16,35 @@ use web_sys::{
 };
 wasm_bindgen_test_configure!(run_in_browser);
 
+#[wasm_bindgen_test]
+fn shared_event_listener_unregisters_on_drop() {
+    use dxutil::web::EventListener;
+    use std::cell::Cell;
+
+    let target = web_sys::EventTarget::new().unwrap();
+    let captured = Rc::new(Cell::new(0));
+    let bubbled = Rc::new(Cell::new(0));
+    let capture = EventListener::new(&target, "shared-listener", true, {
+        let calls = captured.clone();
+        move |_| calls.set(calls.get() + 1)
+    })
+    .unwrap();
+    let bubble = EventListener::new(&target, "shared-listener", false, {
+        let calls = bubbled.clone();
+        move |_| calls.set(calls.get() + 1)
+    })
+    .unwrap();
+    let event = Event::new("shared-listener").unwrap();
+    target.dispatch_event(&event).unwrap();
+    assert_eq!((captured.get(), bubbled.get()), (1, 1));
+    drop(capture);
+    target.dispatch_event(&event).unwrap();
+    assert_eq!((captured.get(), bubbled.get()), (1, 2));
+    drop(bubble);
+    target.dispatch_event(&event).unwrap();
+    assert_eq!((captured.get(), bubbled.get()), (1, 2));
+}
+
 struct Fixture {
     host: Host,
     wrapper: Element,

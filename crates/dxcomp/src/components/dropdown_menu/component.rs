@@ -1,5 +1,3 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
-
 use dioxus::prelude::*;
 use dioxus_primitives::dioxus_attributes::attributes;
 use dioxus_primitives::dropdown_menu::{
@@ -8,11 +6,9 @@ use dioxus_primitives::dropdown_menu::{
 };
 use dioxus_primitives::{merge_attributes, use_controlled};
 
-static NEXT_DROPDOWN_ID: AtomicUsize = AtomicUsize::new(0);
-
 #[component]
 pub fn DropdownMenu(props: DropdownMenuProps) -> Element {
-    let dropdown_id = use_hook(|| NEXT_DROPDOWN_ID.fetch_add(1, Ordering::Relaxed).to_string());
+    let dropdown_id = dxutil::id::use_unique_id("dx-dropdown");
     let (open, set_open) = use_controlled(props.open, props.default_open, props.on_open_change);
     let base = attributes!(div {
         class: "dx-dropdown-menu",

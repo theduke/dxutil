@@ -4,7 +4,6 @@ mod composer;
 pub mod geometry;
 mod input;
 pub mod islands;
-mod listener;
 pub mod mapping;
 pub mod media;
 pub mod render;
@@ -12,7 +11,7 @@ pub mod selection_sync;
 use crate::engine::{
     Command, EditorEngine, EngineInput, EngineOutput, FocusTarget, InlineContainerRef, RenderPlan,
 };
-use listener::Listener;
+use dxutil::{time::now_ms, web::EventListener};
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{Element, Event, MutationObserver, MutationObserverInit};
@@ -29,7 +28,7 @@ pub struct DomHost {
     pub(crate) max_inline_paste_chars: usize,
     pub(crate) drag_uids: Vec<String>,
     pub(crate) drop_target: Option<(String, crate::engine::commands::BlockPlacement)>,
-    listeners: Vec<Listener>,
+    listeners: Vec<EventListener>,
     observer: Option<MutationObserver>,
     observer_callback: Option<Closure<dyn FnMut(js_sys::Array, MutationObserver)>>,
     resize: Option<web_sys::ResizeObserver>,
@@ -191,11 +190,8 @@ impl DomHost {
                 return;
             }
             let mut e = h.engine.borrow_mut();
-            if let Some(now) = web_sys::window()
-                .and_then(|w| w.performance())
-                .map(|p| p.now())
-            {
-                e.set_time_ms(now as u64);
+            if web_sys::window().and_then(|w| w.performance()).is_some() {
+                e.set_time_ms(now_ms() as u64);
             }
             if let EngineInput::Command(Command::InsertBlocks {
                 at: crate::InsertAt::Coords { x, y },
@@ -603,7 +599,7 @@ impl DomHost {
         mut callback: impl FnMut(&Host, Event) + 'static,
     ) -> Result<(), JsValue> {
         let weak = Rc::downgrade(host);
-        let listener = Listener::new(target, name, capture, move |event| {
+        let listener = EventListener::new(target, name, capture, move |event| {
             if let Some(host) = weak.upgrade() {
                 let available = host.try_borrow_mut().is_ok();
                 let engine = host.try_borrow().ok().map(|h| h.engine.clone());
@@ -825,10 +821,4 @@ fn remember(trigger: &str, item: &crate::SuggestionItem) {
             }
         }
     }
-}
-
-fn now_ms() -> f64 {
-    web_sys::window()
-        .and_then(|window| window.performance())
-        .map_or(0., |performance| performance.now())
 }

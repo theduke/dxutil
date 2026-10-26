@@ -10,6 +10,7 @@ Run `make serve-playground` for the web app or
 
 | Crate | Purpose |
 | --- | --- |
+| [`dxutil`](crates/dxutil/README.md) | Shared IDs, monotonic clocks, and browser event listeners |
 | [`dxcomp`](crates/dxcomp/README.md) | Styled components, menus, dialogs, and virtual lists |
 | [`dxeditor`](crates/dxeditor/README.md) | Rich-text documents, Markdown notes, and message composers |
 | [`dxgraph`](crates/dxgraph/README.md) | Interactive graph canvas and layout algorithms |

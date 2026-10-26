@@ -21,9 +21,7 @@ impl Media {
         dirty: Option<&[String]>,
     ) -> Vec<EngineOutput> {
         let mut output = Vec::new();
-        let now = web_sys::window()
-            .and_then(|window| window.performance())
-            .map_or(0., |performance| performance.now());
+        let now = dxutil::time::now_ms();
         let expired: Vec<_> = self
             .pending
             .iter()
