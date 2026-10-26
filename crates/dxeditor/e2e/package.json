@@ -7,10 +7,10 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@playwright/test": "1.60.0",
-    "@axe-core/playwright": "4.11.1",
-    "@types/node": "22.19.15",
-    "typescript": "5.9.3"
+    "@playwright/test": "1.64.1",
+    "@axe-core/playwright": "4.14.0",
+    "@types/node": "26.6.5",
+    "typescript": "7.0.2"
   },
   "overrides": {
     "playwright-core": "1.60.0"
