@@ -1,0 +1,5 @@
+@keyframes dxterm-blink { 50% { opacity: 0; } }
+.dxterm-blink { animation: dxterm-blink 1.2s step-end infinite; }
+.dxterm:focus-within .dxterm-cursor { outline: none; }
+.dxterm-run { font-variant-ligatures: none; }
+@media (prefers-reduced-motion: reduce) { .dxterm-blink { animation: none; } }

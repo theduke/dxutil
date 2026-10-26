@@ -1,0 +1,16 @@
+[package]
+name = "dxterm_core"
+description = "Headless terminal model, snapshots and input encoding"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+rio-vt = { version = "=0.5.28", default-features = false }
+regex = "1.12.2"
+serde = { workspace = true, features = ["derive"] }

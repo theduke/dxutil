@@ -1,6 +1,6 @@
 [package]
 name = "dxterm"
-description = "An xterm.js terminal component for Dioxus"
+description = "A Rust terminal component for Dioxus web, desktop and Native"
 readme = "README.md"
 version.workspace = true
 edition.workspace = true
@@ -10,9 +10,34 @@ authors.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[features]
+default = []
+web = ["dioxus/web", "dep:web-sys", "dep:wasm-bindgen", "dep:wasm-bindgen-futures"]
+desktop = ["dioxus/desktop", "dep:arboard"]
+native = ["dioxus/native", "dep:arboard"]
+
 [dependencies]
+dxterm_core = { path = "../dxterm_core" }
 futures.workspace = true
+futures-timer = { version = "3.0.3", features = ["wasm-bindgen"] }
 dioxus.workspace = true
-serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
-base64 = "0.22.1"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = { version = "0.2.121", optional = true }
+wasm-bindgen-futures = { version = "0.4.71", optional = true }
+web-sys = { version = "0.3.98", optional = true, features = ["Window", "Performance", "Navigator", "Clipboard", "Event", "ClipboardEvent", "DataTransfer", "Document", "Element", "HtmlTextAreaElement"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+arboard = { version = "3.6.1", default-features = false, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = "=0.3.71"
+web-sys = { version = "0.3.98", features = ["HtmlElement", "KeyboardEvent", "KeyboardEventInit", "NodeList", "CssStyleDeclaration"] }
+
+[[example]]
+name = "desktop"
+required-features = ["desktop"]
+
+[[example]]
+name = "native"
+required-features = ["native"]
