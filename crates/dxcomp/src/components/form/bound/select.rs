@@ -7,6 +7,7 @@ use super::{native_attributes, use_bound_control};
 /// Typed select binding with accessible attributes applied to the focusable trigger.
 /// Requires web or a desktop webview for floating positioning; Native is unsupported.
 /// Optional values use `T = Option<X>` and an explicit `None` option.
+/// Set each option's `text_value` when `T` is not a string type.
 #[component]
 pub fn FieldSelect<T, R>(
     field: FieldHandle<T, R>,

@@ -159,7 +159,7 @@ test('responsive preview and keyboard skip link', async ({ page }, testInfo) => 
 
 test('form fields bind labels, drafts, and errors', async ({ page }) => {
   await openStory(page, 'form-fields', 'Form fields');
-  const name = page.getByLabel('Name', { exact: true });
+  const name = page.getByRole('textbox', { name: 'Name', exact: true });
   const age = page.getByLabel('Age', { exact: true });
   await name.focus();
   await age.focus();

@@ -141,8 +141,8 @@ pub fn FormFields() -> Element {
                 }
                 FormField { field: plan.clone(), label: "Plan (styled)", description: "Shares the same typed value as Plan.",
                     FieldSelect { field: plan,
-                        SelectOption::<Plan> { index: 0usize, value: Plan::Free, "Free" }
-                        SelectOption::<Plan> { index: 1usize, value: Plan::Team, "Team" }
+                        SelectOption::<Plan> { index: 0usize, value: Plan::Free, text_value: "Free", "Free" }
+                        SelectOption::<Plan> { index: 1usize, value: Plan::Team, text_value: "Team", "Team" }
                     }
                 }
                 h3 { "Custom table layout" }

@@ -78,7 +78,7 @@ fn PasswordField() -> Element {
         Field { id: "login-password", label: "Password", description: "Use your account password.",
             PasswordInput {
                 value: password(),
-                oninput: move |event| password.set(event.value()),
+                oninput: move |event: FormEvent| password.set(event.value()),
                 autocomplete: "current-password",
             }
         }
@@ -193,7 +193,9 @@ is forwarded only. `FieldTextarea` also accepts `TextareaVariant`.
 The styled controls use labelable primitive buttons. `FieldNativeSelect` maps
 option indexes to typed values without serializing them; an unmatched value
 shows a disabled placeholder. `FieldSelect` accepts `SelectOption::<T>` children
-and applies IDs and ARIA to its trigger button. For optional choices use
+and applies IDs and ARIA to its trigger button. Set `text_value` on options with
+non-string values so the trigger label and typeahead have display text.
+For optional choices use
 `T = Option<X>` with an explicit `None` option. Read-only value controls ignore
 changes; text controls also receive native `readonly`.
 

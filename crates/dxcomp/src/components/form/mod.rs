@@ -11,7 +11,7 @@
 //!     let mut value = use_signal(String::new);
 //!     rsx! {
 //!         Field { id: "password", label: "Password",
-//!             PasswordInput { value: value(), oninput: move |event| value.set(event.value()) }
+//!             PasswordInput { value: value(), oninput: move |event: FormEvent| value.set(event.value()) }
 //!         }
 //!     }
 //! }
