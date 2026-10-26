@@ -2,11 +2,13 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 .PHONY: help check test fmt lint check-wasm check-headless check-desktop docs install-js test-js build-js check-bundles test-editor-native test-editor-wasm build-editor-harness test-editor-e2e audit-js audit-rust
+.PHONY: serve-playground serve-playground-desktop check-playground check-playground-desktop build-playground test-playground
 
 help:
 	@echo "Rust: make check test fmt lint check-headless check-wasm check-desktop docs"
 	@echo "JS:   make install-js test-js build-js check-bundles"
 	@echo "Web:  make test-editor-native test-editor-wasm test-editor-e2e"
+	@echo "Play: make serve-playground build-playground test-playground check-playground-desktop"
 
 check:
 	cargo check --workspace --all-targets --locked --quiet --message-format=short
@@ -28,6 +30,7 @@ check-wasm:
 
 check-desktop:
 	cargo check -p dxcomp -p dxgraph --all-targets --no-default-features --features dxcomp/desktop,dxgraph/demo --locked --quiet --message-format=short
+	$(MAKE) check-playground-desktop
 
 docs:
 	RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked --quiet
@@ -36,11 +39,13 @@ install-js:
 	npm ci --prefix crates/dxcode/web
 	npm ci --prefix crates/dxterm/web
 	npm ci --prefix crates/dxeditor/e2e
+	npm ci --prefix crates/playground/e2e
 
 test-js:
 	npm test --prefix crates/dxcode/web
 	npm test --prefix crates/dxterm/web
 	npm run typecheck --prefix crates/dxeditor/e2e
+	npm run typecheck --prefix crates/playground/e2e
 
 build-js:
 	npm run build --prefix crates/dxcode/web
@@ -62,10 +67,30 @@ build-editor-harness:
 test-editor-e2e: build-editor-harness
 	cd crates/dxeditor/e2e && npx playwright test
 
+serve-playground:
+	dx serve --web --package dxplayground --features web --locked
+
+serve-playground-desktop:
+	dx serve --desktop --package dxplayground --features desktop --locked
+
+check-playground:
+	cargo check -p dxplayground --target wasm32-unknown-unknown --no-default-features --features web --locked --quiet --message-format=short
+
+check-playground-desktop:
+	cargo check -p dxplayground --no-default-features --features desktop --locked --quiet --message-format=short
+
+build-playground:
+	rm -rf target/dx/dxplayground/release/web/public
+	dx build --web --release --debug-symbols=false --keep-names --package dxplayground --features web --locked
+
+test-playground: build-playground
+	cd crates/playground/e2e && npm test
+
 audit-js:
 	npm audit --prefix crates/dxcode/web --audit-level=moderate
 	npm audit --prefix crates/dxterm/web --audit-level=moderate
 	npm audit --prefix crates/dxeditor/e2e --audit-level=moderate
+	npm audit --prefix crates/playground/e2e --audit-level=moderate
 
 audit-rust:
 	cargo audit --file Cargo.lock

@@ -1,0 +1,23 @@
+[package]
+name = "dxplayground"
+description = "Interactive component browser for the dxutil workspace"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = []
+web = ["dioxus/web", "dxcomp/web", "dxeditor/web", "dxgraph/web"]
+desktop = ["dioxus/desktop", "dxcomp/desktop"]
+
+[dependencies]
+dioxus = { workspace = true, features = ["router"] }
+dxcomp = { path = "../dxcomp" }
+dxeditor = { path = "../dxeditor", default-features = false, features = ["markdown"] }
+dxgraph = { path = "../dxgraph" }
+dxform = { path = "../dxform" }
+dxcode = { path = "../dxcode" }
+dxterm = { path = "../dxterm" }
+base64 = "0.22.1"
+serde_json.workspace = true

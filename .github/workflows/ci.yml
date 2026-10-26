@@ -119,6 +119,7 @@ jobs:
             crates/dxcode/web/package-lock.json
             crates/dxterm/web/package-lock.json
             crates/dxeditor/e2e/package-lock.json
+            crates/playground/e2e/package-lock.json
       - run: make install-js test-js check-bundles
 
   editor-browser:
@@ -186,10 +187,74 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  playground:
+    name: Playground release and browser interactions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # master
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          key: playground
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: crates/playground/e2e/package-lock.json
+      - run: bash scripts/install-browser-tools.sh
+      - name: Install playground test dependencies
+        run: |
+          npm ci --prefix crates/playground/e2e
+          cd crates/playground/e2e
+          npx playwright install --with-deps chromium
+      - run: make check-playground test-playground
+      - name: Upload browser reports and screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playground-browser-results
+          path: |
+            crates/playground/e2e/test-results
+            crates/playground/e2e/playwright-report
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Upload Pages site
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: target/dx/dxplayground/release/web/public
+
+  deploy-playground:
+    name: Publish playground to GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && github.event_name != 'merge_group'
+    needs: [required, playground]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: playground-pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+        id: deployment
+
   required:
     name: CI required
     if: ${{ always() }}
-    needs: [quality, native, features, javascript, editor-browser]
+    needs: [quality, native, features, javascript, editor-browser, playground]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
