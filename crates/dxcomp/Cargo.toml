@@ -1,7 +1,6 @@
 [package]
 name = "dxcomp"
 description = "Prestyled Dioxus components, floating surfaces, and virtual lists"
-readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -9,19 +8,24 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+documentation = "https://docs.rs/dxcomp"
+readme = "README.md"
 
 [dependencies]
-dioxus = { workspace = true, features = ["router"] }
-dioxus-icons = "0.1.0"
-dioxus-primitives = { git = "https://github.com/DioxusLabs/dioxus-components", rev = "02801f27e4b3e30606e5c77e435c9d955c708eb3" }
-dxform = { path = "../dxform", optional = true }
-dxutil = { path = "../dxutil" }
-palette = "0.7.6"
+dioxus = { workspace = true, default-features = true, features = ["router"] }
+dioxus-icons.workspace = true
+dioxus-primitives.workspace = true
+dxform = { workspace = true, optional = true }
+dxutil.workspace = true
+palette.workspace = true
 serde.workspace = true
 time = { workspace = true, features = ["macros"] }
 
 [dev-dependencies]
-dioxus-ssr = "0.7.9"
+dioxus-ssr.workspace = true
 
 [features]
 default = []

@@ -1,17 +1,25 @@
 [package]
 name = "dxeditor_harness"
 description = "Browser test harness for dxeditor"
-readme = "README.md"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
 publish = false
+readme = "README.md"
 
 [dependencies]
-dioxus = { workspace = true }
-dxeditor = { path = "../dxeditor" }
+dioxus = { workspace = true, default-features = true }
+dxeditor = { workspace = true, default-features = true }
 serde_json.workspace = true
 futures.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-dioxus = { workspace = true, features = ["web"] }
-web-sys = { version = "0.3.98", features = ["Window", "Location", "UrlSearchParams"] }
+dioxus = { workspace = true, default-features = true, features = ["web"] }
+web-sys = { workspace = true, features = ["Window", "Location", "UrlSearchParams"] }

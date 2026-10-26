@@ -1,0 +1,30 @@
+[package]
+name = "dxcomp-attributes"
+description = "Dioxus attribute macros forked from dioxus-attributes for dxcomp-primitives"
+version.workspace = true
+edition = "2021"
+rust-version.workspace = true
+authors = ["Dioxus Labs", "DogeDark", "Christoph Herzog <chris@theduke.at>"]
+license = "MIT OR Apache-2.0"
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+documentation = "https://docs.rs/dxcomp-attributes"
+readme = "README.md"
+
+[package.metadata.upstream]
+repository = "https://github.com/DioxusLabs/dioxus-components"
+revision = "02801f27e4b3e30606e5c77e435c9d955c708eb3"
+path = "dioxus-attributes"
+license = "MIT OR Apache-2.0"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+dioxus-rsx.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+syn = { workspace = true, features = ["full", "extra-traits"] }

@@ -2093,17 +2093,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dioxus-attributes"
-version = "0.1.0"
-source = "git+https://github.com/DioxusLabs/dioxus-components?rev=02801f27e4b3e30606e5c77e435c9d955c708eb3#02801f27e4b3e30606e5c77e435c9d955c708eb3"
-dependencies = [
- "dioxus-rsx",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "dioxus-cli-config"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2566,22 +2555,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dioxus-primitives"
-version = "0.0.1"
-source = "git+https://github.com/DioxusLabs/dioxus-components?rev=02801f27e4b3e30606e5c77e435c9d955c708eb3#02801f27e4b3e30606e5c77e435c9d955c708eb3"
-dependencies = [
- "dioxus",
- "dioxus-attributes",
- "dioxus-sdk-time",
- "lazy-js-bundle",
- "num-integer",
- "palette",
- "serde",
- "time",
- "tracing",
-]
-
-[[package]]
 name = "dioxus-router"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2958,13 +2931,39 @@ version = "0.0.1"
 dependencies = [
  "dioxus",
  "dioxus-icons",
- "dioxus-primitives",
  "dioxus-ssr",
+ "dxcomp-primitives",
  "dxform",
  "dxutil",
  "palette",
  "serde",
  "time",
+]
+
+[[package]]
+name = "dxcomp-attributes"
+version = "0.0.1"
+dependencies = [
+ "dioxus-rsx",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "dxcomp-primitives"
+version = "0.0.1"
+dependencies = [
+ "dioxus",
+ "dioxus-sdk-time",
+ "dioxus-ssr",
+ "dxcomp-attributes",
+ "lazy-js-bundle",
+ "num-integer",
+ "palette",
+ "serde",
+ "time",
+ "tracing",
 ]
 
 [[package]]

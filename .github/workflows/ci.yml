@@ -41,7 +41,7 @@ jobs:
         with:
           key: quality
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - run: make fmt lint docs
+      - run: make check-package-metadata fmt lint docs
 
   native:
     name: Native (${{ matrix.os }})

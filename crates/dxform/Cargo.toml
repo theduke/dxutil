@@ -1,18 +1,20 @@
 [package]
 name = "dxform"
 description = "Headless form state, validation, and submission for Dioxus"
-authors.workspace = true
-keywords.workspace = true
-repository.workspace = true
-homepage.workspace = true
-license.workspace = true
-readme = "README.md"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
 categories.workspace = true
-version.workspace = true
+exclude.workspace = true
+documentation = "https://docs.rs/dxform"
+readme = "README.md"
 
 [dependencies]
-dioxus = { workspace = true }
-futures = "0.3.31"
-thiserror = "2.0.17"
+dioxus = { workspace = true, default-features = true }
+futures.workspace = true
+thiserror.workspace = true

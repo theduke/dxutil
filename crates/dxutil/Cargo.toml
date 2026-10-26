@@ -1,22 +1,24 @@
 [package]
 name = "dxutil"
 description = "Shared IDs, clocks, and browser listeners for Dioxus"
-authors.workspace = true
-keywords.workspace = true
-repository.workspace = true
-homepage.workspace = true
-license.workspace = true
-readme = "README.md"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
 categories.workspace = true
-version.workspace = true
+exclude.workspace = true
+documentation = "https://docs.rs/dxutil"
+readme = "README.md"
 
 [features]
 default = []
 web = ["dep:web-sys", "dep:wasm-bindgen"]
 
 [dependencies]
-dioxus = { workspace = true }
-wasm-bindgen = { version = "0.2.105", optional = true }
-web-sys = { version = "0.3.98", optional = true, features = ["Window", "Performance", "Event", "EventTarget"] }
+dioxus = { workspace = true, default-features = true }
+wasm-bindgen = { workspace = true, optional = true }
+web-sys = { workspace = true, optional = true, features = ["Window", "Performance", "Event", "EventTarget"] }

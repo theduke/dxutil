@@ -2,8 +2,8 @@ use std::cell::Cell;
 
 use dioxus::prelude::*;
 
-use super::*;
 use super::attrs::{attr, take_control_attrs};
+use super::*;
 
 fn render(app: fn() -> Element) -> String {
     let mut dom = VirtualDom::new(app);
@@ -325,11 +325,9 @@ mod bound {
     fn native_select_matches_typed_values_by_index_and_handles_absent_values() {
         fn app() -> Element {
             let form = use_form(|| 7u32);
-            let field = form.scope().field(FieldSpec::new(
-                "value",
-                |n: &u32| *n,
-                |n, value| *n = value,
-            ));
+            let field =
+                form.scope()
+                    .field(FieldSpec::new("value", |n: &u32| *n, |n, value| *n = value));
             rsx! {
                 FieldNativeSelect { field: field.clone(), options: vec![SelectChoice::new(5u32, "Five"), SelectChoice::new(7u32, "Seven")] }
                 FieldNativeSelect { field, placeholder: "Choose", options: vec![SelectChoice::new(5u32, "Five")] }
@@ -375,18 +373,17 @@ mod bound {
         fn app() -> Element {
             let form = use_form(|| AppValue::Count(8));
             let field = form.scope().field(
-                FieldSpec::new("count", |v: &AppValue| v.clone(), |v, next| *v = next)
-                    .text_draft(
-                        |value| match value {
-                            AppValue::Null => String::new(),
-                            AppValue::Count(value) => value.to_string(),
-                        },
-                        |text| {
-                            text.parse()
-                                .map(AppValue::Count)
-                                .map_err(|_| FormError::new("Expected a number"))
-                        },
-                    ),
+                FieldSpec::new("count", |v: &AppValue| v.clone(), |v, next| *v = next).text_draft(
+                    |value| match value {
+                        AppValue::Null => String::new(),
+                        AppValue::Count(value) => value.to_string(),
+                    },
+                    |text| {
+                        text.parse()
+                            .map(AppValue::Count)
+                            .map_err(|_| FormError::new("Expected a number"))
+                    },
+                ),
             );
             use_hook(|| field.set_draft("bad".into()));
             let ids = FieldIds::from_path("table", field.path().as_str());

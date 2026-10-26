@@ -1,16 +1,20 @@
 [package]
 name = "dxterm_core"
 description = "Headless terminal model, snapshots and input encoding"
-readme = "README.md"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-license.workspace = true
 authors.workspace = true
+license.workspace = true
 repository.workspace = true
 homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
+documentation = "https://docs.rs/dxterm_core"
+readme = "README.md"
 
 [dependencies]
-rio-vt = { version = "=0.5.28", default-features = false }
-regex = "1.12.2"
+rio-vt.workspace = true
+regex.workspace = true
 serde = { workspace = true, features = ["derive"] }

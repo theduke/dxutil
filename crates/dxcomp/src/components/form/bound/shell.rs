@@ -29,15 +29,11 @@ where
 {
     let meta = field.meta();
     let form = field.form().meta();
-    let errors: Vec<String> = visible_field_errors(
-        &meta,
-        &form,
-        field.validation(),
-        error_visibility,
-    )
-    .into_iter()
-    .map(|error| error_message(error, format_error))
-    .collect();
+    let errors: Vec<String> =
+        visible_field_errors(&meta, &form, field.validation(), error_visibility)
+            .into_iter()
+            .map(|error| error_message(error, format_error))
+            .collect();
     rsx! {
         Field {
             id, label, description, errors, required, read_only, layout, labelling,

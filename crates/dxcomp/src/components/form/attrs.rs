@@ -52,7 +52,10 @@ pub(crate) fn take_control_attrs(attributes: Vec<Attribute>) -> CallerControlAtt
             caller.rest.push(attribute);
             continue;
         }
-        let is_text = matches!(&attribute.value, AttributeValue::Text(_) | AttributeValue::None);
+        let is_text = matches!(
+            &attribute.value,
+            AttributeValue::Text(_) | AttributeValue::None
+        );
         match attribute.name {
             "id" if is_text => caller.id = text,
             "aria-labelledby" if is_text => caller.labelledby = text,

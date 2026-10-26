@@ -46,24 +46,18 @@ pub fn FormFields() -> Element {
     });
     let scope = form.scope();
     let name = scope.field(
-        FieldSpec::new(
-            "name",
-            |s: &Signup| s.name.clone(),
-            |s, v| s.name = v,
-        )
-        .validator(FieldValidator::sync(
-            |ctx: FieldValidationContext<Signup, String>| {
+        FieldSpec::new("name", |s: &Signup| s.name.clone(), |s, v| s.name = v).validator(
+            FieldValidator::sync(|ctx: FieldValidationContext<Signup, String>| {
                 if ctx.value.trim().is_empty() {
                     vec![FormError::field(ctx.path, "Enter your name.")]
                 } else {
                     Vec::new()
                 }
-            },
-        )),
+            }),
+        ),
     );
-    let age = scope.field(
-        FieldSpec::new("age", |s: &Signup| s.age, |s, v| s.age = v).input_draft(),
-    );
+    let age =
+        scope.field(FieldSpec::new("age", |s: &Signup| s.age, |s, v| s.age = v).input_draft());
     let password = scope.field(FieldSpec::new(
         "password",
         |s: &Signup| s.password.clone(),
@@ -95,12 +89,7 @@ pub fn FormFields() -> Element {
         |s, v| s.plan = v,
     ));
     let quota = scope.field(
-        FieldSpec::new(
-            "quota",
-            |s: &Signup| s.quota.clone(),
-            |s, v| s.quota = v,
-        )
-        .text_draft(
+        FieldSpec::new("quota", |s: &Signup| s.quota.clone(), |s, v| s.quota = v).text_draft(
             |value| match value {
                 AppValue::Null => String::new(),
                 AppValue::Int(value) => value.to_string(),

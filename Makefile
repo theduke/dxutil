@@ -4,12 +4,20 @@ SHELL := /bin/bash
 .PHONY: check-native test-terminal-wasm
 .PHONY: help check test fmt lint check-wasm check-headless check-desktop docs install-js test-js test-editor-native test-editor-wasm build-editor-harness test-editor-e2e audit-js audit-rust
 .PHONY: serve-playground serve-playground-desktop check-playground check-playground-desktop build-playground test-playground
+.PHONY: check-package-metadata publish-dry-run
 
 help:
 	@echo "Rust: make check test fmt lint check-headless check-wasm check-desktop check-native docs"
 	@echo "JS:   make install-js test-js"
 	@echo "Web:  make test-editor-native test-editor-wasm test-editor-e2e test-terminal-wasm"
 	@echo "Play: make serve-playground build-playground test-playground check-playground-desktop"
+	@echo "Ship: make check-package-metadata publish-dry-run"
+
+check-package-metadata:
+	python3 scripts/check-package-metadata.py
+
+publish-dry-run: check-package-metadata
+	cargo publish --workspace --dry-run --locked
 
 check:
 	cargo check --workspace --all-targets --locked --quiet --message-format=short

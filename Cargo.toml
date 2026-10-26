@@ -12,16 +12,73 @@ repository = "https://github.com/theduke/dxutil"
 homepage = "https://github.com/theduke/dxutil"
 keywords = ["dioxus", "ui"]
 categories = ["gui", "web-programming"]
+exclude = ["/AGENTS.md", "/e2e/**"]
 
 [workspace.dependencies]
-dioxus = "0.7.9"
+arboard = { version = "3.6.1", default-features = false }
+arborium-bash = { version = "=2.18.2", default-features = false }
+arborium-c = { version = "=2.18.2", default-features = false }
+arborium-cpp = { version = "=2.18.2", default-features = false }
+arborium-css = { version = "=2.18.2", default-features = false }
+arborium-go = { version = "=2.18.2", default-features = false }
+arborium-html = { version = "=2.18.2", default-features = false }
+arborium-javascript = { version = "=2.18.2", default-features = false }
+arborium-json = { version = "=2.18.2", default-features = false }
+arborium-python = { version = "=2.18.2", default-features = false }
+arborium-rust = { version = "=2.18.2", default-features = false }
+arborium-sql = { version = "=2.18.2", default-features = false }
+arborium-toml = { version = "=2.18.2", default-features = false }
+arborium-tsx = { version = "=2.18.2", default-features = false }
+arborium-typescript = { version = "=2.18.2", default-features = false }
+arborium-yaml = { version = "=2.18.2", default-features = false }
+# Allow members to opt out of defaults on the minimum supported Cargo version.
+dioxus = { version = "0.7.9", default-features = false }
+dioxus-html = "0.7.9"
+dioxus-icons = "0.1.0"
+dioxus-rsx = "0.7.9"
+dioxus-sdk-time = "0.7.0"
+dioxus-ssr = "0.7.9"
+# Keep these versions in sync with workspace.package.version.
+# Retain upstream dependency names to preserve existing imports and re-exports.
+dioxus-attributes = { package = "dxcomp-attributes", version = "0.0.1", path = "crates/dxcomp-attributes" }
+dioxus-primitives = { package = "dxcomp-primitives", version = "0.0.1", path = "crates/dxcomp-primitives" }
+dxcode = { version = "0.0.1", path = "crates/dxcode" }
+dxcomp = { version = "0.0.1", path = "crates/dxcomp" }
+dxeditor = { version = "0.0.1", path = "crates/dxeditor", default-features = false }
+dxform = { version = "0.0.1", path = "crates/dxform" }
+dxgraph = { version = "0.0.1", path = "crates/dxgraph" }
+dxterm = { version = "0.0.1", path = "crates/dxterm" }
+dxterm_core = { version = "0.0.1", path = "crates/dxterm_core" }
+dxutil = { version = "0.0.1", path = "crates/dxutil" }
 futures = "=0.3.34"
+futures-timer = "3.0.3"
+gloo-timers = "0.3.0"
+indexmap = "2"
+js-sys = "0.3.98"
+lazy-js-bundle = "0.7.9"
+num-integer = "0.1.46"
+palette = "0.7.6"
+proc-macro2 = "1.0"
+pulldown-cmark = "0.13.0"
+quote = "1.0"
+regex = "1.12.2"
+rio-vt = { version = "=0.5.28", default-features = false }
 serde = "1.0.228"
 serde_json = "1.0.145"
 sha2 = "0.10.9"
+syn = "2.0"
 thiserror = "=2.0.21"
 time = "0.3.47"
+tracing = "0.1"
+tree-sitter = "=0.27.1"
+tree-sitter-md = "0.5.1"
+unicode-segmentation = "1.12.0"
+url = "2.5.7"
 uuid = "1.21.0"
+wasm-bindgen = "0.2.121"
+wasm-bindgen-futures = "0.4.71"
+wasm-bindgen-test = "=0.3.71"
+web-sys = "0.3.98"
 
 [profile.dev]
 opt-level = 1

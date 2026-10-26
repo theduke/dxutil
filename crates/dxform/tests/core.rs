@@ -698,20 +698,15 @@ fn validate_if_skips_validators_while_parse_error() {
     run_in_runtime(|| {
         let calls = Rc::new(std::cell::Cell::new(0));
         let validator_calls = calls.clone();
-        let form = FormRoot::with_options(
-            FormOptions::new(0u32).validation(ValidationStrategy::change()),
-        );
+        let form =
+            FormRoot::with_options(FormOptions::new(0u32).validation(ValidationStrategy::change()));
         let field = form.scope().field(
-            FieldSpec::new(
-                "value",
-                |value: &u32| *value,
-                |value, next| *value = next,
-            )
-            .validator(FieldValidator::sync(move |_| {
-                validator_calls.set(validator_calls.get() + 1);
-                Vec::new()
-            }))
-            .input_draft(),
+            FieldSpec::new("value", |value: &u32| *value, |value, next| *value = next)
+                .validator(FieldValidator::sync(move |_| {
+                    validator_calls.set(validator_calls.get() + 1);
+                    Vec::new()
+                }))
+                .input_draft(),
         );
         field.set_draft("bad".into());
         assert!(futures::executor::block_on(field.validate_if(ValidationPhase::Change)).is_none());
@@ -769,12 +764,8 @@ fn scope_reset_clears_parse_errors() {
             |value, day| value.day = day,
         ));
         let leaf = day.scope().field(
-            FieldSpec::new(
-                "number",
-                |value: &i32| *value,
-                |value, next| *value = next,
-            )
-            .input_draft(),
+            FieldSpec::new("number", |value: &i32| *value, |value, next| *value = next)
+                .input_draft(),
         );
         leaf.set_draft("bad".into());
         assert!(!leaf.meta().errors.is_empty());

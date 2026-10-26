@@ -4,7 +4,15 @@ description = "Interactive component browser for the dxutil workspace"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+keywords.workspace = true
+categories.workspace = true
+exclude.workspace = true
 publish = false
+readme = "README.md"
 
 [features]
 default = []
@@ -12,11 +20,11 @@ web = ["dioxus/web", "dxcomp/web", "dxeditor/web", "dxgraph/web", "dxcode/web", 
 desktop = ["dioxus/desktop", "dxcomp/desktop", "dxcode/desktop", "dxterm/desktop"]
 
 [dependencies]
-dioxus = { workspace = true, features = ["router"] }
-dxcomp = { path = "../dxcomp", features = ["dxform"] }
-dxeditor = { path = "../dxeditor", default-features = false, features = ["markdown"] }
-dxgraph = { path = "../dxgraph" }
-dxform = { path = "../dxform" }
-dxcode = { path = "../dxcode", features = ["typescript"] }
-dxterm = { path = "../dxterm" }
+dioxus = { workspace = true, default-features = true, features = ["router"] }
+dxcomp = { workspace = true, features = ["dxform"] }
+dxeditor = { workspace = true, default-features = false, features = ["markdown"] }
+dxgraph.workspace = true
+dxform.workspace = true
+dxcode = { workspace = true, features = ["typescript"] }
+dxterm.workspace = true
 serde_json.workspace = true
