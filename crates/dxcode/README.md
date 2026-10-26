@@ -1,7 +1,7 @@
 # dxcode
 
-A Dioxus code surface backed by CodeMirror 6, with controlled text, read-only mode,
-selection/save callbacks, line navigation, and a syntax-highlighting helper.
+A CodeMirror 6 editor for Dioxus, with controlled text, syntax highlighting,
+read-only mode, selection callbacks, and line navigation.
 
 ## Use
 
@@ -23,64 +23,51 @@ fn App() -> Element {
                 value: source(),
                 path: Some("src/main.rs".to_string()),
                 on_change: move |value| source.set(value),
-                on_save: move |_| { /* Persist the current source value. */ },
+                on_save: move |_| { /* Persist the current value. */ },
             }
         }
     }
 }
 ```
 
-The parent must provide a definite height. `CodeView` injects its styles and
-keeps its CodeMirror instance synchronized with `value`, `path`, and `read_only`.
-The `on_save` callback handles Command/Ctrl-S. Optional `on_selection` reports a
-`CodeSelection` containing selected text and one-based start/end line numbers.
+Give the parent a definite height. The component includes its styles and requires
+a DOM-capable Dioxus renderer with JavaScript evaluation support.
 
-Pass `goto: Some(LineTarget { line, column })` to scroll to a location and focus
-the editor. Lines and columns are one-based; omitted columns start at column one.
-Changing the target triggers navigation. Columns follow CodeMirror's UTF-16 text
-positions.
+## Editing and navigation
 
-## Languages and tokens
+Keep `value` synchronized through `on_change`. Set `read_only` to disable editing.
+`path` selects the language; unknown extensions use plain text. `on_save` handles
+Command/Ctrl-S, and `on_selection` receives the selected text and one-based line
+numbers in a `CodeSelection`.
 
-`language_for_path` detects Rust, JavaScript/TypeScript (including JSX/TSX), JSON,
-CSS, HTML, Markdown, Python, Go, Java, C/C++, SQL, YAML, XML/SVG, shell, and TOML.
-Unknown paths retain plain-text editing.
+Pass `goto: Some(LineTarget { line, column })` to focus and scroll to a location.
+Lines and columns are one-based; omitted columns start at column one. Columns
+use UTF-16 positions. Navigation runs when the target changes.
 
-`highlight_lines(language, lines).await` returns token spans for each line using
-CodeMirror's language parsers. It requires an active Dioxus JavaScript evaluation
-context, even though its return value is a Rust data structure. Calls accept at
-most 5,000 lines and return `CodeError` on failure. Returned `TokenSpan` start/end
-offsets count Rust Unicode scalar values within each line; the end is exclusive.
-Token classes follow Lezer's class highlighter, such as `tok-keyword` and
-`tok-string`.
+Supported languages include Rust, JavaScript/TypeScript and JSX/TSX, JSON, CSS,
+HTML, Markdown, Python, Go, Java, C/C++, SQL, YAML, XML, shell, and TOML.
+`language_for_path` exposes filename-based detection.
+
+## Token highlighting and styles
+
+`highlight_lines(language, lines).await` returns `TokenSpan` values for up to
+5,000 lines. It requires a Dioxus JavaScript evaluation context. Token start/end
+offsets count Unicode scalar values within each line, with an exclusive end.
+Classes use Lezer names such as `tok-keyword` and `tok-string`.
 
 Override `--code-background`, `--code-text`, `--code-muted`, `--code-selection`,
-and token color variables in your app CSS to match your theme.
-
-## Runtime and assets
-
-There are no crate feature flags. Editing requires a DOM-capable Dioxus renderer
-with JavaScript evaluation support. The initial HTML includes a plain-text,
-numbered fallback of up to 500 lines; the JavaScript editor hides that fallback
-when it mounts. This fallback does not make the interactive editor available to
-renderers without browser DOM support.
-
-The committed `web/dist/code.iife.js` bundle is embedded by Rust. Consumers do not
-need Node.js, and the bundle's existing `window.SemanticCode` global is retained
-for compatibility. Each view is destroyed on unmount.
+and token color variables in your app CSS. Static HTML includes a numbered
+plain-text preview of up to 500 lines until the interactive editor mounts.
 
 ## Development
 
-From the workspace root, enter `nix develop .#ui` when Nix is available:
+See [workspace setup](../../README.md#development). Run JavaScript tests and
+rebuild the embedded bundle from the repository root:
 
 ```sh
-cargo check -p dxcode --all-targets --locked --quiet --message-format=short
-cargo test -p dxcode --locked --quiet --message-format=short
 npm ci --prefix crates/dxcode/web
 npm test --prefix crates/dxcode/web
 npm run build --prefix crates/dxcode/web
 ```
 
-The build enforces a 1,200,000-byte JavaScript bundle budget. Commit regenerated
-`web/dist/` files with TypeScript or dependency changes. Workspace commands
-`make test-js check-bundles` run JavaScript validation and check bundle consistency.
+The build enforces a 1,200,000-byte JavaScript bundle limit.

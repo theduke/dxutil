@@ -1,13 +1,9 @@
 # dxcomp
 
-Prestyled Dioxus components, based on `DioxusLabs/dioxus-components` and bundled
-as a reusable Rust library. It includes buttons and inputs, dialogs and menus,
-layout components, date/color pickers, and virtual lists. The upstream primitive
-API is also available through `dxcomp::primitives`.
+Styled Dioxus components: buttons and inputs, dialogs and menus, layout controls,
+date and color pickers, and virtual lists.
 
 ## Use
-
-Until a crates.io release is available, use the repository dependency:
 
 ```toml
 [dependencies]
@@ -34,49 +30,41 @@ fn App() -> Element {
 }
 ```
 
-Component modules follow names such as `dxcomp::button`, `dxcomp::dialog`, and
-`dxcomp::virtual_list`. `CSS` exposes the entire stylesheet for hosts that manage
-style injection themselves. `ThemeStylesheet` and `THEME_CSS` are compatibility
-names; use `Stylesheet` and `CSS` for new integrations.
+Components are grouped in modules such as `button`, `dialog`, `combobox`, and
+`virtual_list`. Lower-level primitives are available through `dxcomp::primitives`.
 
-The theme follows `prefers-color-scheme` unless the HTML element sets
-`data-theme="light"` or `data-theme="dark"`. Override the shared `--dx-*` and
-component CSS variables in your app stylesheet to customize colors and geometry.
+## Styling and interaction
 
-## Features and runtime
+The theme follows `prefers-color-scheme`. Set `data-theme="light"` or
+`data-theme="dark"` on the HTML element to override it. Customize shared `--dx-*`
+and component CSS variables in your app stylesheet. `dxcomp::CSS` exposes the
+stylesheet for applications that manage style injection themselves.
 
-There are no default crate features. Select the feature matching your Dioxus
-renderer:
+Popups, sidebar hooks, and virtual lists require a DOM-capable renderer with
+Dioxus JavaScript evaluation support. Static rendering produces markup without
+those interactions.
+
+Give `VirtualList` a scrolling container with a bounded height. For imperative
+scrolling, call `use_virtual_list_scroller()` in an ancestor component, then call
+`scroll_to(index)` on its returned handle. The hook provides the handle to
+descendant lists through Dioxus context.
+
+## Features
+
+No features are enabled by default. Choose the feature matching your renderer:
 
 | Feature | Enables |
 | --- | --- |
 | `web` | Dioxus web renderer and web primitives |
 | `desktop` | Dioxus desktop renderer |
-| `fullstack` | Dioxus fullstack support |
-| `server` | Dioxus server and fullstack support |
+| `fullstack` | Fullstack support |
+| `server` | Server and fullstack support |
 | `native` | Dioxus native renderer |
-
-Interactive popup positioning, sidebar hooks, and virtual lists use Dioxus's
-JavaScript evaluation bridge. They require a renderer that supports browser DOM
-access; static rendering alone does not exercise those interactions. Floating
-menus use the browser popover top layer to avoid ancestor clipping.
-
-`VirtualList` accepts the upstream primitive's `VirtualListProps`. Give its
-scrolling container a bounded height. For imperative scrolling, call
-`use_virtual_list_scroller()` in an ancestor component; it provides the handle
-through Dioxus context to descendant lists. Call `scroll_to(index)` on the handle.
 
 ## Development
 
-From the workspace root, enter `nix develop .#ui` when Nix is available:
+See [workspace setup](../../README.md#development). Run crate tests from the root:
 
 ```sh
-cargo check -p dxcomp --all-targets --locked --quiet --message-format=short
 cargo test -p dxcomp --locked --quiet --message-format=short
-make check-wasm check-desktop
 ```
-
-Changes to `dioxus-primitives` should keep its pinned Git revision deliberate.
-The local virtualizer retains upstream MIT/Apache-2.0 notices in
-[`src/components/virtual_list/`](src/components/virtual_list/); keep those notices
-when modifying or redistributing it.

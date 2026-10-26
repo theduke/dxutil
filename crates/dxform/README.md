@@ -1,8 +1,7 @@
 # dxform
 
-Headless form state for Dioxus: typed values and field drafts, validation,
-submission, nested scopes, and dynamic lists. It supplies state and event helpers;
-your app supplies HTML, component styling, and persistence.
+Typed form state for Dioxus: validation, submission, nested scopes, dynamic lists,
+and field drafts. Use it with your own HTML or styled components.
 
 ## Use
 
@@ -57,48 +56,35 @@ fn App() -> Element {
 }
 ```
 
-The example submit handler receives the typed snapshot; replace its body with
-your persistence operation. Use `SubmitHandler::async_` for a boxed local future.
+The submit handler receives a typed snapshot. Replace its body with your
+persistence operation, or use `SubmitHandler::async_` for asynchronous submission.
 
-## Model and validation
+## State and validation
 
-`use_form` and `use_form_with_options` create a `FormRoot<T>` inside a Dioxus
-component. Values must be `Clone + PartialEq + 'static`. A `FieldSpec` names a
-field and supplies typed getter/setter functions. `FieldHandle` exposes its value,
-draft, metadata, and event helpers; field-local signals avoid subscribing every
-input to the whole form.
+Create forms inside a Dioxus component with `use_form` or `use_form_with_options`.
+Values must be `Clone + PartialEq + 'static`. A `FieldSpec` supplies a name and
+getter/setter functions; its `FieldHandle` exposes values, drafts, and metadata.
 
-Attach `FieldValidator`, `ScopeValidator`, `ListValidator`, or `FormValidator`
-instances at the appropriate level. Validators can be synchronous or asynchronous;
-`ValidationStrategy` controls when validation runs. Errors carry field paths and
-sources, including parsing and submission failures. Metadata tracks dirty,
-touched/focused, validation, and submission state. `form.reset()` restores the
-initial values and metadata.
+- Attach synchronous or asynchronous `FieldValidator`, `ScopeValidator`,
+  `ListValidator`, or `FormValidator` instances. `ValidationStrategy` controls
+  when validation runs.
+- Read metadata for dirty, touched, focus, validation, and submission state.
+  Errors carry paths and sources. `form.reset()` restores the initial values.
+- Use `SubformSpec` for nested structs and `ListSpec` for dynamic lists with
+  stable item keys. Context helpers expose roots, scopes, and list items to
+  nested components.
+- Use `InputValue` for text conversion and checkbox helpers for booleans.
+  `FieldSpec::with_draft` preserves intermediate input through explicit format
+  and parse functions.
 
-Use `SubformSpec` for nested structs and `ListSpec` for lists. List handles retain
-stable item keys across edits and expose operations such as insertion, removal,
-and reordering. Context helpers (`provide_form_root`, `provide_form_scope`, and
-`provide_list_item`) let nested components access the appropriate root or scope.
+The crate has no feature flags or required styles. Form state requires a Dioxus
+runtime and component scope.
 
-`InputValue` supplies text conversion for strings, optional strings, and numeric
-types; boolean fields provide checkbox helpers. For drafts that must preserve
-invalid intermediate input, use `FieldSpec::with_draft` with explicit format and
-parse functions.
+## Examples and tests
 
-## Examples and development
-
-- [Basic form with validation and async submission](examples/basic.rs)
+- [Validation and async submission](examples/basic.rs)
 - [Nested subform](examples/subform.rs)
-- [Nested dynamic lists](examples/nested_list.rs)
+- [Nested lists](examples/nested_list.rs)
 
-There are no crate feature flags, bundled styles, or custom JavaScript runtime.
-Choose a Dioxus renderer in the consuming application. Form state still needs a
-Dioxus runtime and scope; it is not a standalone non-UI form engine.
-
-From the workspace root, enter `nix develop .#ui` when Nix is available:
-
-```sh
-cargo check -p dxform --all-targets --locked --quiet --message-format=short
-cargo test -p dxform --locked --quiet --message-format=short
-make check-wasm
-```
+After [workspace setup](../../README.md#development), run
+`cargo test -p dxform --locked --quiet --message-format=short`.

@@ -1,23 +1,69 @@
-# Browser editor tests
+# Editor browser tests
 
-The suite mounts the real Rust/Dioxus public editors through `dxeditor_harness`.
-It has no JavaScript editor implementation. `helpers.ts` dispatches browser events
-and inspects DOM/output solely for testing.
+Playwright tests for rich-text editing, Markdown notes, composers, accessibility,
+clipboard input, embedded components, and large documents. The suite runs the
+[editor harness](../../dxeditor_harness/README.md) in Chromium, Firefox, and WebKit.
 
-Use `nix develop .#ui --command make test-editor-native test-editor-wasm test-editor-e2e`.
-The flake pins Playwright browsers to the same 1.60.0 version as `package.json` and
-its `playwright-core` override. Nix browser RPATHs supply their shared libraries;
-the shell skips Playwright's host-distribution metadata check and the suite still
-launches and exercises every browser. The pinned package definition is
-[upstream nixpkgs](https://github.com/NixOS/nixpkgs/blob/89570f24e97e614aa34aa9ab1c927b6578a43775/pkgs/development/web/playwright/driver.nix).
+## Setup
 
-Without Nix, install Rust wasm32, Dioxus CLI and the matching wasm-bindgen runner,
-then `npm ci` and `npx playwright install chromium firefox webkit`. Linux browser
-shared libraries must be available. `PLAYWRIGHT_CHROMIUM_PATH` can override Chrome;
-`DXEDITOR_HARNESS_DIR` can override the built web directory. The Python server
-provides SPA fallback routes.
+Run from the repository root. On Linux with Nix:
 
-`npm run typecheck` checks the test scripts. `npx playwright test --project chromium`
-selects one browser; the default runs all three. Chromium alone runs CDP composition
-and performance cases. Performance JSON is attached to each Playwright test result;
-reported budgets are assessed in the validation report against the actual machine.
+```sh
+nix develop .#ui
+make install-js
+make test-editor-native test-editor-wasm test-editor-e2e
+```
+
+For other environments, start with [workspace setup](../../../README.md#development)
+and install the browser build tools:
+
+```sh
+cargo install dioxus-cli --version 0.7.9 --locked
+cargo install wasm-bindgen-cli --version 0.2.121 --locked
+make install-js
+cd crates/dxeditor/e2e
+npx playwright install --with-deps chromium firefox webkit
+cd ../../..
+```
+
+The wasm-bindgen CLI must match `wasm-bindgen` in `Cargo.lock`. WASM tests also
+need Chrome/Chromium and a matching chromedriver on PATH. The Linux Nix shell
+supplies these tools and browsers; on macOS, install Playwright browsers even
+when using Nix.
+
+## Run
+
+From the repository root:
+
+```sh
+make test-editor-native test-editor-wasm test-editor-e2e
+```
+
+For one browser or test file, build the harness first:
+
+```sh
+make build-editor-harness
+cd crates/dxeditor/e2e
+npx playwright test --project chromium
+npx playwright test editor.spec.ts --project chromium
+npm run typecheck
+```
+
+Playwright starts the Python server automatically. Chromium runs the CDP
+composition and performance cases; Firefox and WebKit run the applicable cases.
+
+## Configuration and reports
+
+| Variable | Purpose |
+| --- | --- |
+| `DXEDITOR_HARNESS_DIR` | Built public asset directory |
+| `DXEDITOR_PORT` | Test server port; default `4173` |
+| `DXEDITOR_RESULTS_DIR` | Results directory, relative to this directory |
+| `PLAYWRIGHT_CHROMIUM_PATH` | Custom Chromium executable |
+| `CHROMEDRIVER` | Driver executable for WASM tests |
+| `WASM_BINDGEN_TEST_WEBDRIVER_JSON` | WebDriver capabilities file for WASM tests |
+
+Failures retain screenshots and traces. Results are written to `test-results/`
+and the HTML report to `playwright-report/` by default. CI uploads both in the
+`editor-browser-results` artifact. Performance tests attach their measurements;
+compare timings using the same machine and build profile.

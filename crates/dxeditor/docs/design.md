@@ -132,11 +132,12 @@ Dynamic search and URL fields receive explicit focus when mounted.
 
 ## Validation
 
-Run from the Nix `ui` devshell when Nix is available:
+Run from the workspace root, using the Nix `ui` devshell when Nix is available:
 
 ```sh
+make install-js
 make test-editor-native test-editor-wasm test-editor-e2e
-make check-web check-desktop
+make check-wasm check-desktop
 cargo fmt --all
 ```
 
@@ -153,8 +154,10 @@ Performance cases attach mount and 30-keystroke p95 measurements for 2k/10k bloc
 with 50 islands. Test scripts and generated wasm binding glue are distinct from
 editor implementation code.
 
-Actual validation results and environment limitations belong in
-`docs/plans/2026-10-25-oxidize-editor/validation.md`.
+CI uploads browser reports, traces, and screenshots as the
+`editor-browser-results` artifact. Local reports live under `e2e/test-results/`
+and `e2e/playwright-report/`; record any additional device-specific limitations
+with the change that introduces or verifies them.
 
 ## Deliberate limitations and device follow-up
 

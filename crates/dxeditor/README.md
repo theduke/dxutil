@@ -1,9 +1,7 @@
 # dxeditor
 
-A rich-text editor implemented in Rust for Dioxus. A platform-neutral editing
-engine owns documents, transactions, selections, history, and validation. On
-browser WASM, a `web-sys` adapter manages the editable DOM; Dioxus renders the host,
-menus, and application-provided component islands.
+A Rust rich-text editor for Dioxus, with structured block documents, Markdown
+notes, message composers, undo/redo, tables, suggestions, and embedded components.
 
 ## Use
 
@@ -30,68 +28,52 @@ fn App() -> Element {
 }
 ```
 
-Editor components inject their own styles. The Markdown example uses the default
-`markdown` and `web` features. No Node.js build is required to use the editor.
+Editor components include their styles.
 
-## Choose an editor
+## Editor APIs
 
-| API | Value and intended use |
+| Component | Value and use |
 | --- | --- |
-| `MarkdownEditor` | Markdown `String` with `on_change` |
-| `Editor` | `EditorPayload` plus a catalog and explicit output format |
-| `ComponentEditor` | Structured `ComponentDocumentV2` block documents |
-| `profiles::composer::ComposerEditor` | Message text and chips, suggestions, and submission events |
-| `DocumentView` | Read-only rendering of the legacy `EditorDocument` model |
+| `MarkdownEditor` | Markdown string |
+| `Editor` | `EditorPayload` with an explicit catalog and output format |
+| `ComponentEditor` | Structured `ComponentDocumentV2` block document |
+| `profiles::composer::ComposerEditor` | Message text and chips, suggestions, and submission |
+| `DocumentView` | Read-only `EditorDocument` rendering |
 
 `ComponentEditor` defaults to `EditorCatalog::block_document()`. Use
 `EditorCatalog::graph_node()` for rich node content without nested graphs, or
 extend a catalog with your own component specifications. `IslandRegistry` mounts
-host Dioxus components inside blocks; `EntityLinkExtension` supplies entity search,
-preview, and open callbacks.
+your Dioxus components inside blocks. `EntityLinkExtension` supplies entity search,
+preview, and open callbacks; entity links use `semantic:entity:<id>` URLs.
 
-The `on_ready` callback provides a `ComponentEditorHandle` for commands, undo/redo,
-selection-aware insertions, snapshots, and external document replacement. Valid
-local changes emit `ComponentChange`, including the document, revision, and dirty
-block IDs. Invalid changes call `on_invalid_change`. Controlled hosts can use
-`external_revision` to acknowledge updates and distinguish external replacements.
-Choose an explicit `HistoryPolicy` when replacing a document through the handle.
-
-Existing Semantic-compatible document schema identifiers and
-`semantic:entity:` links are preserved. The crate does not depend on Semantic's
-database or application crates.
+`on_ready` provides a `ComponentEditorHandle` for commands, undo/redo, insertion,
+snapshots, and document replacement. `on_change` emits a validated
+`ComponentChange` containing the document, revision, and dirty block IDs.
+`on_invalid_change` reports invalid edits. Use `external_revision` to acknowledge
+controlled updates and `HistoryPolicy` to choose replacement undo behavior.
 
 ## Features and platforms
 
 | Feature | Default | Purpose |
 | --- | --- | --- |
 | `markdown` | Yes | Markdown parsing and codecs |
-| `web` | Yes | Dioxus web support and browser API bindings |
+| `web` | Yes | Web renderer and browser API bindings |
 
-Full rich-text interaction requires both the `web` feature and a `wasm32` build.
-On native targets, block documents render read-only with an editing notice;
-notes and composer use textarea fallbacks. The editing engine and codecs remain
-native-testable. Disable default features for consumers that only need the
-headless document/engine APIs.
+Full rich-text editing requires `web` and a WASM build. Native targets render
+block documents read-only; notes and composer use textarea fallbacks. The document
+model, editing engine, and codecs can run natively. Disable default features for
+headless use.
 
-Input handles Unicode scalar model offsets, UTF-16 DOM offsets, grapheme deletion,
-composition, clipboard formats, tables, and host media requests. The detailed
-ownership and persistence rules are in [the design document](docs/design.md).
+See [the design guide](docs/design.md) for document structure, transactions, and
+custom component integration.
 
-## Development and tests
+## Tests
 
-From the workspace root, use `nix develop .#ui` when Nix is available:
+After [workspace setup](../../README.md#development), run:
 
 ```sh
 make test-editor-native test-editor-wasm test-editor-e2e
-make check-headless check-wasm
-cargo fmt --all
 ```
 
-The native suite covers the engine, history, formats, and clipboard policy. WASM
-tests exercise DOM behavior through `wasm-bindgen-test`. Playwright runs the
-[editor harness](../dxeditor_harness/README.md) in Chromium, Firefox, and WebKit.
-See [browser setup and diagnostics](e2e/README.md) and the
-[root development guide](../../README.md) for required tools.
-
-Browser implementation belongs in `src/dom/`; test-only TypeScript belongs in
-`e2e/`. Keep both the native and browser suites when changing engine or DOM code.
+The [browser test guide](e2e/README.md) covers required tools, individual browser
+projects, and reports.
