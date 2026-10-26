@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help check test fmt lint check-wasm check-headless check-desktop docs install-js test-js build-js check-bundles test-editor-native test-editor-wasm build-editor-harness test-editor-e2e audit-js
+.PHONY: help check test fmt lint check-wasm check-headless check-desktop docs install-js test-js build-js check-bundles test-editor-native test-editor-wasm build-editor-harness test-editor-e2e audit-js audit-rust
 
 help:
 	@echo "Rust: make check test fmt lint check-headless check-wasm check-desktop docs"
@@ -66,3 +66,6 @@ audit-js:
 	npm audit --prefix crates/dxcode/web --audit-level=moderate
 	npm audit --prefix crates/dxterm/web --audit-level=moderate
 	npm audit --prefix crates/dxeditor/e2e --audit-level=moderate
+
+audit-rust:
+	cargo audit --file Cargo.lock

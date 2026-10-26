@@ -324,7 +324,7 @@ fn TableRowV2(
     } }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "markdown"))]
 mod tests {
     use super::*;
     use crate::markdown_v2::MarkdownDocumentFormat;
