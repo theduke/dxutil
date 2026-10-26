@@ -97,7 +97,7 @@ pub const STORIES: &[Story] = &[
         title: "ANSI terminal",
         description: "An interactive local echo terminal with color, resizing, and event feedback.",
         instructions: "Type in the terminal or send a sample log. Adjust font size, select output, and resize the preview. Reset clears the screen.",
-        notes: "This is a local echo transport, not a shell or PTY. TerminalView uses its bundled xterm.js engine in web and Dioxus desktop’s webview.",
+        notes: "This is a local echo transport, not a shell or PTY. TerminalView uses its Rust terminal core and text-row renderer in web and Dioxus desktop’s webview.",
     },
     Story {
         id: "code",

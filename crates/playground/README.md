@@ -25,7 +25,7 @@ make serve-playground-desktop
 ```
 
 This app does not target the separate `dioxus-native` renderer.
-xterm.js and several dxcomp interactions require a DOM and JavaScript
+Several dxcomp interactions require a DOM and JavaScript
 evaluation. The app itself uses Dioxus APIs rather than direct browser bindings.
 On web WASM, dxeditor uses its rich-text DOM implementation; on desktop,
 Markdown and the composer use the crate's textarea fallbacks. GTK 3,

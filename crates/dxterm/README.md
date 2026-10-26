@@ -34,9 +34,9 @@ fn terminal() -> Element {
 On web and desktop, give the component's parent a definite height and width. Cell dimensions come
 from a mounted text probe. The container and probe are measured through
 `get_client_rect`, including after font or container changes; `on_resize` fires
-only when the column or row counts change. Measurements are polled approximately
-every 100 ms, avoiding renderer-specific resize events. Zero-sized containers
-are ignored until visible. Use an actually monospace font.
+only when the column or row counts change. Measurements run on mount, appearance
+prop changes, and host or probe resize events. There is no idle geometry polling.
+Zero-sized containers are ignored until visible. Use an actually monospace font.
 
 `TerminalWriter` is a copyable hook handle. `write(impl AsRef<[u8]>).await` queues
 owned bytes in call order; `reset().await` resets the model. Completion means the
@@ -81,8 +81,8 @@ Click detected URLs, file links or OSC 8 links to invoke `on_link`.
 | Paste | Browser paste event, including bracketed paste | Ctrl/Cmd+V and paste via arboard | Ctrl/Cmd+V via arboard |
 | IME/composition and preedit | Hidden textarea at cursor | Hidden textarea at cursor | Unsupported; handlers omitted |
 | OS paste / Dioxus clipboard events | Yes | Yes | Unsupported; handlers omitted |
-| Dioxus resize events | Not used | Not used | Unsupported; handlers omitted |
-| Resize by mounted geometry polling | Yes | Yes | Unavailable: no mounted conversion; fixed 80×24 grid, 8×16 px cells |
+| Dioxus resize events | Yes | Yes | Unsupported; handlers omitted |
+| Resize from mounted geometry and resize events | Yes | Yes | Unavailable: no mounted conversion; fixed 80×24 grid, 8×16 px cells |
 | Focus in/out reports | Yes | Yes | Unavailable: renderer does not dispatch focus events |
 | JavaScript | Browser clipboard/textarea APIs only | Textarea clearing via gated eval only | None |
 
@@ -100,8 +100,11 @@ does not share these Blitz limitations.
 Rows are real text, with an application label, a log region and a throttled
 polite live region (approximately twice per second, bounded to 4 KiB). Custom
 selection and cursor are overlays. Assistive technology behavior varies between
-renderers. Output is coalesced into one snapshot per frame tick; row components
-memoize shared row allocations. Reduced-motion preferences disable CSS blinking.
+renderers. Output and redraw notifications coalesce into one snapshot at the next
+frame boundary; the update loop sleeps while idle. Row components memoize shared
+row allocations. The live region uses a one-shot timer only while output awaits
+announcement. CSS handles blinking independently of the update loop; reduced-motion
+preferences disable blinking.
 
 Graphics (sixel, kitty and iTerm images), media keys and standalone modifier-key
 reports are unsupported. Selection drag is limited to the component bounds.

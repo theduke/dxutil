@@ -1,31 +1,5 @@
 //! Small platform boundary. Blitz never executes JavaScript or registers
 //! composition, clipboard or resize handlers (unsupported in Dioxus 0.7).
-use std::sync::atomic::{AtomicU64, Ordering};
-
-pub(crate) fn unique_id(prefix: &str) -> String {
-    static NEXT: AtomicU64 = AtomicU64::new(1);
-    format!("{prefix}-{}", NEXT.fetch_add(1, Ordering::Relaxed))
-}
-
-pub(crate) fn now_ms() -> f64 {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        static EPOCH: std::sync::LazyLock<std::time::Instant> =
-            std::sync::LazyLock::new(std::time::Instant::now);
-        EPOCH.elapsed().as_secs_f64() * 1000.
-    }
-    #[cfg(all(target_arch = "wasm32", feature = "web"))]
-    {
-        web_sys::window()
-            .and_then(|window| window.performance())
-            .map(|performance| performance.now())
-            .unwrap_or(0.)
-    }
-    #[cfg(all(target_arch = "wasm32", not(feature = "web")))]
-    {
-        0.
-    }
-}
 /// Private frame source shared by every renderer.
 pub(crate) async fn next_frame() {
     #[cfg(all(feature = "web", target_arch = "wasm32", not(feature = "native")))]

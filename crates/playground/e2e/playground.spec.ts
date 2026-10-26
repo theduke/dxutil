@@ -115,12 +115,12 @@ test('terminal writes and read-only code highlighting', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await openStory(page, 'terminal', 'ANSI terminal');
-  await expect(page.locator('.xterm')).toBeVisible();
+  await expect(page.locator('.dxterm')).toBeVisible();
   await page.getByRole('button', { name: 'Send sample log' }).click();
-  await expect(page.getByRole('status')).toContainText('Sample log sent');
-  await page.locator('.xterm-helper-textarea').focus();
+  await expect(page.locator('.state-line[role="status"]')).toContainText('Sample log sent');
+  await page.locator('.dxterm-input').focus();
   await page.keyboard.type('hello');
-  await expect(page.getByRole('status')).toContainText('Echoed');
+  await expect(page.locator('.state-line[role="status"]')).toContainText('Echoed');
   await page.getByLabel('Font size').selectOption('18');
   await page.getByRole('button', { name: 'Narrow preview' }).click();
   await expect(page.locator('.preview')).toHaveClass(/narrow/);

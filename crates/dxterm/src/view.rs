@@ -1,4 +1,5 @@
 use crate::{Frame, TerminalLink, TerminalTheme, TerminalWriter, keyboard, platform};
+use dioxus::core::Task;
 use dioxus::prelude::*;
 use dxterm_core::{
     CellPoint, CursorShape, Row, SelectionKind, Snapshot, Terminal, TerminalEvent, Underline,
@@ -41,6 +42,84 @@ fn emit(input: EventHandler<Vec<u8>>, bytes: Vec<u8>) {
     }
 }
 
+async fn measure(host: &MountedData, probe: &MountedData) -> Option<(Metrics, (u16, u16))> {
+    let (rect, glyph) = futures::join!(host.get_client_rect(), probe.get_client_rect());
+    let (rect, glyph) = (rect.ok()?, glyph.ok()?);
+    if !(glyph.size.width > 0.
+        && glyph.size.height > 0.
+        && rect.size.width > 0.
+        && rect.size.height > 0.)
+    {
+        return None;
+    }
+    let metrics = Metrics {
+        width: glyph.size.width / 10.,
+        height: glyph.size.height,
+        left: rect.origin.x,
+        top: rect.origin.y,
+    };
+    let size = (
+        (rect.size.width / metrics.width)
+            .floor()
+            .clamp(2., f64::from(u16::MAX)) as u16,
+        (rect.size.height / metrics.height)
+            .floor()
+            .clamp(1., f64::from(u16::MAX)) as u16,
+    );
+    Some((metrics, size))
+}
+
+#[derive(Default)]
+struct Announcements {
+    text: String,
+    last_announced: f64,
+    timer: Option<Task>,
+}
+
+fn announce(mut state: Signal<Announcements>, mut live: Signal<String>, text: &str) {
+    if text.is_empty() {
+        return;
+    }
+    let delay = {
+        let mut state = state.write();
+        state.text.push_str(text);
+        if state.text.len() > 4096 {
+            let mut start = state.text.len() - 4096;
+            while !state.text.is_char_boundary(start) {
+                start += 1;
+            }
+            state.text.drain(..start);
+        }
+        if state.timer.is_some() {
+            return;
+        }
+        (500. - (dxutil::time::now_ms() - state.last_announced)).clamp(0., 500.)
+    };
+    let timer = spawn(async move {
+        futures_timer::Delay::new(std::time::Duration::from_secs_f64(delay / 1000.)).await;
+        let text = {
+            let mut state = state.write();
+            state.timer = None;
+            state.last_announced = dxutil::time::now_ms();
+            std::mem::take(&mut state.text)
+        };
+        live.set(text);
+    });
+    state.write().timer = Some(timer);
+}
+
+fn clear_announcements(mut state: Signal<Announcements>, mut live: Signal<String>) {
+    let timer = {
+        let mut state = state.write();
+        state.text.clear();
+        state.timer.take()
+    };
+    if let Some(timer) = timer {
+        timer.cancel();
+    }
+    live.set(String::new());
+}
+
 /// Interactive terminal. Connect `on_input` directly to the same PTY that feeds
 /// `writer`; this includes replies to terminal queries as well as user input.
 #[component]
@@ -57,7 +136,7 @@ pub fn TerminalView(
     #[props(default)] on_bell: EventHandler<()>,
     #[props(default)] on_clipboard_store: EventHandler<String>,
 ) -> Element {
-    let id = use_hook(|| platform::unique_id("dxterm"));
+    let id = dxutil::id::use_unique_id("dxterm");
     let mut model = use_signal(|| Terminal::new(80, 24, 10_000));
     let mut snapshot = use_signal(|| model.write().snapshot());
     #[allow(unused_mut)]
@@ -66,63 +145,43 @@ pub fn TerminalView(
     let mut probe = use_signal(|| None::<Rc<MountedData>>);
     let focus_target = use_signal(|| None::<Rc<MountedData>>);
     let mut metrics = use_signal(Metrics::default);
-    let mut live = use_signal(String::new);
+    let live = use_signal(String::new);
     let mut dragging = use_signal(|| false);
     let mut drag_origin = use_signal(CellPoint::default);
     let mut click_state = use_signal(|| (0f64, CellPoint::default(), 0u8));
-    let mut clock = use_signal(|| 0f64);
     let preedit = use_signal(String::new);
     let composing = use_signal(|| false);
     let mut focused = use_signal(|| cfg!(feature = "native"));
 
-    use_effect(use_reactive(&theme, move |theme| {
-        model.write().set_theme(theme);
-        snapshot.set(model.write().snapshot());
-    }));
+    let announcements = use_signal(Announcements::default);
+    use_effect(use_reactive(
+        (&theme, &font_family, &font_size),
+        move |(theme, _, _)| {
+            model.write().set_theme(theme);
+            writer.request_measure();
+            writer.request_render();
+        },
+    ));
     use_future(move || async move {
         #[cfg(feature = "native")]
         on_resize.call((80, 24));
         let mut size = (0, 0);
-        let mut measured_at = -100.;
-        let mut announced_at = 0.;
-        let mut announcements = String::new();
         loop {
+            writer.notified().await;
+            // Drain only after the frame boundary so bursts share one snapshot.
             platform::next_frame().await;
-            let now = platform::now_ms();
-            clock.set(now);
+            let pending = writer.take_pending();
             let selected_before = model.peek().has_selection();
-            // Polling mounted geometry avoids unsupported Blitz resize events
-            // and also catches font/style changes without any JS bridge.
-            let mut changed = false;
-            if now - measured_at >= 100. {
-                measured_at = now;
+            let mut changed = pending.render || !pending.frames.is_empty();
+            if pending.measure {
                 let host = host.peek().clone();
                 let probe = probe.peek().clone();
                 if let (Some(host), Some(probe)) = (host, probe)
-                    && let (Ok(rect), Ok(glyph)) =
-                        futures::join!(host.get_client_rect(), probe.get_client_rect())
-                    && glyph.size.width > 0.
-                    && glyph.size.height > 0.
-                    && rect.size.width > 0.
-                    && rect.size.height > 0.
+                    && let Some((measured, new_size)) = measure(&host, &probe).await
                 {
-                    let measured = Metrics {
-                        width: glyph.size.width / 10.,
-                        height: glyph.size.height,
-                        left: rect.origin.x,
-                        top: rect.origin.y,
-                    };
                     if *metrics.peek() != measured {
                         metrics.set(measured);
                     }
-                    let new_size = (
-                        (rect.size.width / measured.width)
-                            .floor()
-                            .clamp(2., f64::from(u16::MAX)) as u16,
-                        (rect.size.height / measured.height)
-                            .floor()
-                            .clamp(1., f64::from(u16::MAX)) as u16,
-                    );
                     if size != new_size {
                         size = new_size;
                         model.write().resize(size.0, size.1);
@@ -131,15 +190,9 @@ pub fn TerminalView(
                     }
                 }
             }
-            let pending = if writer.frames.peek().is_empty() {
-                Vec::new()
-            } else {
-                std::mem::take(&mut *writer.frames.write())
-            };
-            let mut completions = Vec::with_capacity(pending.len());
+            let mut completions = Vec::with_capacity(pending.frames.len());
             let mut events = model.write().drain_events();
-            for frame in pending {
-                changed = true;
+            for frame in pending.frames {
                 match frame {
                     Frame::Output(bytes, done) => {
                         model.write().write(&bytes);
@@ -147,13 +200,11 @@ pub fn TerminalView(
                     }
                     Frame::Reset(done) => {
                         model.write().reset();
-                        announcements.clear();
-                        live.set(String::new());
+                        clear_announcements(announcements, live);
                         completions.push(done);
                     }
                 }
-                // Preserve replies and notifications even if a later queued
-                // frame resets the terminal in this same render batch.
+                // Preserve notifications before a later reset in this batch.
                 events.extend(model.write().drain_events());
             }
             // Drop the model borrow before calling host callbacks.
@@ -170,6 +221,7 @@ pub fn TerminalView(
                     on_selection.call(String::new());
                 }
                 let next = model.write().snapshot();
+                let mut text = String::new();
                 for &row in &next.damaged_rows {
                     if let Some(data) = next.rows.get(row as usize) {
                         if snapshot
@@ -180,27 +232,16 @@ pub fn TerminalView(
                         {
                             continue;
                         }
-                        let text = data.text();
-                        let text = text.trim_end();
-                        if !text.is_empty() {
-                            announcements.push_str(text);
-                            announcements.push('\n');
+                        let row_text = data.text();
+                        let row_text = row_text.trim_end();
+                        if !row_text.is_empty() {
+                            text.push_str(row_text);
+                            text.push('\n');
                         }
                     }
                 }
-                // Bound announcements even when assistive technology is slow.
-                if announcements.len() > 4096 {
-                    let mut at = announcements.len() - 4096;
-                    while !announcements.is_char_boundary(at) {
-                        at += 1;
-                    }
-                    announcements.drain(..at);
-                }
+                announce(announcements, live, &text);
                 snapshot.set(next);
-            }
-            if now - announced_at >= 500. && !announcements.is_empty() {
-                announced_at = now;
-                live.set(std::mem::take(&mut announcements));
             }
             for done in completions {
                 let _ = done.send(());
@@ -232,7 +273,7 @@ pub fn TerminalView(
             );
         } else {
             model.write().scroll(if delta.y < 0. { 3 } else { -3 });
-            snapshot.set(model.write().snapshot());
+            writer.request_render();
         }
     });
     #[cfg(not(feature = "native"))]
@@ -243,15 +284,23 @@ pub fn TerminalView(
         Vec::new()
     };
     #[cfg(not(feature = "native"))]
-    let host_attributes = vec![dioxus::html::onmounted(move |event: MountedEvent| {
-        host.set(Some(event.data()))
-    })];
+    let host_attributes = vec![
+        dioxus::html::onmounted(move |event: MountedEvent| {
+            host.set(Some(event.data()));
+            writer.request_measure();
+        }),
+        dioxus::html::onresize(move |_: ResizeEvent| writer.request_measure()),
+    ];
     #[cfg(feature = "native")]
     let host_attributes: Vec<Attribute> = Vec::new();
     #[cfg(not(feature = "native"))]
-    let probe_attributes = vec![dioxus::html::onmounted(move |event: MountedEvent| {
-        probe.set(Some(event.data()))
-    })];
+    let probe_attributes = vec![
+        dioxus::html::onmounted(move |event: MountedEvent| {
+            probe.set(Some(event.data()));
+            writer.request_measure();
+        }),
+        dioxus::html::onresize(move |_: ResizeEvent| writer.request_measure()),
+    ];
     #[cfg(feature = "native")]
     let probe_attributes: Vec<Attribute> = Vec::new();
     let onmousedown = move |event: MouseEvent| {
@@ -278,7 +327,7 @@ pub fn TerminalView(
             return;
         }
         let (last, previous, count) = *click_state.peek();
-        let now = *clock.peek();
+        let now = dxutil::time::now_ms();
         let count = if now - last < 400. && previous == point {
             count % 3 + 1
         } else {
@@ -295,7 +344,7 @@ pub fn TerminalView(
                 _ => SelectionKind::Simple,
             },
         );
-        snapshot.set(model.write().snapshot());
+        writer.request_render();
         on_selection.call(model.peek().selection_text());
     };
     let onmousemove = move |event: MouseEvent| {
@@ -324,7 +373,7 @@ pub fn TerminalView(
             );
         } else if *dragging.peek() {
             model.write().update_selection(point);
-            snapshot.set(model.write().snapshot());
+            writer.request_render();
             on_selection.call(model.peek().selection_text());
         }
     };
@@ -346,7 +395,7 @@ pub fn TerminalView(
             if point == *drag_origin.peek() {
                 if click_state.peek().2 == 1 {
                     model.write().clear_selection();
-                    snapshot.set(model.write().snapshot());
+                    writer.request_render();
                 }
                 let link = model.write().link_at(point);
                 if let Some(link) = link {
@@ -403,8 +452,8 @@ pub fn TerminalView(
             style:"position:relative;overflow:hidden;width:100%;height:100%;min-width:0;min-height:0;outline:none;touch-action:none;font-family:{font};font-size:{size}px;line-height:{line_height};color:{theme.foreground()};background:{theme.background()};",
             onfocusin:move |_| {focused.set(true);emit(on_input,model.peek().focus(true));},
             onfocusout:move |_| {focused.set(false);emit(on_input,model.peek().focus(false));},
-            onkeydown:move |event|handle_key(event,false,model,snapshot,on_input,on_selection),
-            onkeyup:move |event|handle_key(event,true,model,snapshot,on_input,on_selection),
+            onkeydown:move |event|handle_key(event,false,model,snapshot,on_input,on_selection,writer),
+            onkeyup:move |event|handle_key(event,true,model,snapshot,on_input,on_selection,writer),
             onmousedown:onmousedown,
             onmousemove:onmousemove,
             onmouseup:onmouseup,
@@ -446,9 +495,10 @@ fn handle_key(
     event: KeyboardEvent,
     release: bool,
     mut model: Signal<Terminal>,
-    mut snapshot: Signal<Snapshot>,
+    snapshot: Signal<Snapshot>,
     input: EventHandler<Vec<u8>>,
     on_selection: EventHandler<String>,
+    writer: TerminalWriter,
 ) {
     if event.is_composing() {
         return;
@@ -467,7 +517,7 @@ fn handle_key(
                 Key::End => model.write().scroll_to_bottom(),
                 _ => {}
             }
-            snapshot.set(model.write().snapshot());
+            writer.request_render();
         }
         event.prevent_default();
         event.stop_propagation();
@@ -518,7 +568,7 @@ fn handle_key(
                 on_selection.call(String::new());
             }
             model.write().scroll_to_bottom();
-            snapshot.set(model.write().snapshot());
+            writer.request_render();
         }
         emit(input, bytes);
     }

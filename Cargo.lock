@@ -3032,7 +3032,6 @@ dependencies = [
 name = "dxplayground"
 version = "0.0.1"
 dependencies = [
- "base64",
  "dioxus",
  "dxcode",
  "dxcomp",
@@ -3050,6 +3049,7 @@ dependencies = [
  "arboard",
  "dioxus",
  "dxterm_core",
+ "dxutil",
  "futures",
  "futures-timer",
  "wasm-bindgen",
