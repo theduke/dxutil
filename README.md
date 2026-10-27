@@ -4,22 +4,22 @@
 
 Dioxus components and libraries for Rust applications.
 
-Explore the UI crates in the [component playground](crates/playground/README.md).
+Explore the UI crates in the [component playground](https://theduke.github.io/dxutil/).
 Run `make serve-playground` for the web app or
 `make serve-playground-desktop` for a Dioxus desktop webview window.
 
-| Crate | Purpose |
-| --- | --- |
-| [`dxutil`](crates/dxutil/README.md) | Shared IDs, monotonic clocks, and browser event listeners |
-| [`dxcomp`](crates/dxcomp/README.md) | Styled components, menus, dialogs, and virtual lists |
-| [`dxeditor`](crates/dxeditor/README.md) | Rich-text documents, Markdown notes, and message composers |
-| [`dxgraph`](crates/dxgraph/README.md) | Interactive graph canvas and layout algorithms |
-| [`dxform`](crates/dxform/README.md) | Typed form state, validation, and submission |
-| [`dxterm`](crates/dxterm/README.md) | Rust terminal component for Dioxus |
-| [`dxterm_core`](crates/dxterm_core/README.md) | Headless terminal model and input encoding |
-| [`dxhighlight`](crates/dxhighlight/README.md) | Tree-sitter highlighting and a read-only Rust code viewer |
-| [`dxcomp-primitives`](crates/dxcomp-primitives/README.md) | Temporary fork of upstream `dioxus-primitives` |
-| [`dxcomp-attributes`](crates/dxcomp-attributes/README.md) | Companion fork of upstream attribute macros |
+| Crate | Purpose | crates.io |
+| --- | --- | --- |
+| [`dxutil`](crates/dxutil/README.md) | Shared IDs, monotonic clocks, and browser event listeners | [![crates.io](https://img.shields.io/crates/v/dxutil.svg)](https://crates.io/crates/dxutil) |
+| [`dxcomp`](crates/dxcomp/README.md) | Styled components, menus, dialogs, and virtual lists | [![crates.io](https://img.shields.io/crates/v/dxcomp.svg)](https://crates.io/crates/dxcomp) |
+| [`dxeditor`](crates/dxeditor/README.md) | Rich-text documents, Markdown notes, and message composers | [![crates.io](https://img.shields.io/crates/v/dxeditor.svg)](https://crates.io/crates/dxeditor) |
+| [`dxgraph`](crates/dxgraph/README.md) | Interactive graph canvas and layout algorithms | [![crates.io](https://img.shields.io/crates/v/dxgraph.svg)](https://crates.io/crates/dxgraph) |
+| [`dxform`](crates/dxform/README.md) | Typed form state, validation, and submission | [![crates.io](https://img.shields.io/crates/v/dxform.svg)](https://crates.io/crates/dxform) |
+| [`dxterm`](crates/dxterm/README.md) | Rust terminal component for Dioxus | [![crates.io](https://img.shields.io/crates/v/dxterm.svg)](https://crates.io/crates/dxterm) |
+| [`dxterm_core`](crates/dxterm_core/README.md) | Headless terminal model and input encoding | [![crates.io](https://img.shields.io/crates/v/dxterm_core.svg)](https://crates.io/crates/dxterm_core) |
+| [`dxhighlight`](crates/dxhighlight/README.md) | Tree-sitter highlighting and a read-only Rust code viewer | [![crates.io](https://img.shields.io/crates/v/dxhighlight.svg)](https://crates.io/crates/dxhighlight) |
+| [`dxcomp-primitives`](crates/dxcomp-primitives/README.md) | Temporary fork of upstream `dioxus-primitives` | [![crates.io](https://img.shields.io/crates/v/dxcomp-primitives.svg)](https://crates.io/crates/dxcomp-primitives) |
+| [`dxcomp-attributes`](crates/dxcomp-attributes/README.md) | Companion fork of upstream attribute macros | [![crates.io](https://img.shields.io/crates/v/dxcomp-attributes.svg)](https://crates.io/crates/dxcomp-attributes) |
 
 ## Use
 

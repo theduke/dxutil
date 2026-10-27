@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
-use dxhighlight::{CodeView, LineTarget};
 use dxcomp::button::{Button, ButtonVariant};
+use dxhighlight::{CodeView, LineTarget};
 
 fn sample(path: &str) -> &'static str {
     match path {
