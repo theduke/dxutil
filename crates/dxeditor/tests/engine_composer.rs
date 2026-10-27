@@ -122,3 +122,24 @@ fn controlled_update_does_not_split_or_count_chip_label_as_characters() {
         }
     );
 }
+
+#[test]
+fn select_all_includes_every_paragraph_and_chips_on_every_press() {
+    let mut e = engine(&fixture());
+    let order = model::block_order(e.document());
+    let first = order.first().unwrap().clone();
+    let last = order.last().unwrap().clone();
+    let expected = EditorSelection::Text(TextRange {
+        anchor: TextPoint::new(InlineContainerRef::Block(first), 0),
+        head: TextPoint::new(InlineContainerRef::Block(last), 0),
+    });
+    for _ in 0..3 {
+        e.run(Command::SelectAll);
+        assert_eq!(e.selection(), &expected);
+    }
+    e.run(Command::InsertText("replacement".into()));
+    assert_eq!(
+        composer_plain_text(&blocks_to_composer(e.document())),
+        "replacement"
+    );
+}

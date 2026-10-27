@@ -382,12 +382,35 @@ fn cross_block_replace_is_one_transaction() {
 #[test]
 fn clearing_a_block_selection_leaves_a_genuinely_empty_paragraph() {
     let mut e = engine(vec![p("clear me"), p("and me")]);
-    e.run(Command::SelectAll);
-    e.run(Command::SelectAll);
+    e.run(Command::SetSelection(EditorSelection::Blocks {
+        anchor: uid(&root(&e)[0]),
+        head: uid(&root(&e)[1]),
+    }));
     e.run(Command::InsertText(String::new()));
     assert_eq!(root(&e).len(), 1);
     assert!(root(&e)[0].content[0].content.is_empty());
     e.run(Command::Undo);
     assert_eq!(root(&e).len(), 2);
     assert_eq!(root(&e)[0].text_content(), "clear me");
+}
+
+#[test]
+fn select_all_selects_every_text_block_on_the_first_press_and_is_idempotent() {
+    let a = p("first");
+    let b = p("second");
+    let first = uid(&a);
+    let last = uid(&b);
+    let mut e = engine(vec![a, b]);
+    caret(&mut e, &last, 3);
+    let expected = EditorSelection::Text(dxeditor::engine::TextRange {
+        anchor: dxeditor::engine::TextPoint::new(InlineContainerRef::Block(first), 0),
+        head: dxeditor::engine::TextPoint::new(InlineContainerRef::Block(last), 6),
+    });
+    for _ in 0..3 {
+        e.run(Command::SelectAll);
+        assert_eq!(e.selection(), &expected);
+    }
+    e.run(Command::InsertText("replacement".into()));
+    assert_eq!(root(&e).len(), 1);
+    assert_eq!(root(&e)[0].text_content(), "replacement");
 }

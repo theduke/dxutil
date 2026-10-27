@@ -1129,19 +1129,23 @@ fn exit(e: &mut EditorEngine, kind: &str) -> Vec<EngineOutput> {
     )
 }
 fn select_all(e: &mut EditorEngine) -> Vec<EngineOutput> {
-    if let Some((c, start, end)) = selected_text(e) {
-        let length = e.inline(&c).map_or(0, |n| text::len(n));
-        if start != 0 || end != length {
-            return select(
-                e,
-                EditorSelection::Text(TextRange {
-                    anchor: TextPoint::new(c.clone(), 0),
-                    head: TextPoint::new(c, length),
-                }),
-            );
-        }
-    }
     let order = model::block_order(&e.doc);
+    if let (Some(first), Some(last)) = (order.first(), order.last())
+        && order.iter().all(|uid| {
+            e.content(uid)
+                .is_some_and(|content| model::is_text_kind(&content.kind.0))
+        })
+    {
+        let container = InlineContainerRef::Block(last.clone());
+        let length = e.inline(&container).map_or(0, |nodes| text::len(nodes));
+        return select(
+            e,
+            EditorSelection::Text(TextRange {
+                anchor: TextPoint::new(InlineContainerRef::Block(first.clone()), 0),
+                head: TextPoint::new(container, length),
+            }),
+        );
+    }
     let (Some(first), Some(last)) = (order.first(), order.last()) else {
         return vec![];
     };

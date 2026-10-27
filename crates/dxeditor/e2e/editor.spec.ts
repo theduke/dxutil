@@ -182,3 +182,41 @@ test('mobile and scaled wrappers keep contextual surfaces on screen', async ({ p
   expect(bounds!.x).toBeGreaterThanOrEqual(-1); expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(391);
   await page.keyboard.press('Enter'); await expect(editor(page).locator('table')).toHaveCount(1);
 });
+
+for (const route of ['/blocks', '/composer']) {
+  test(`select all covers every paragraph and stays selected in ${route}`, async ({ page }) => {
+    await open(page, route); await caret(page);
+    await page.keyboard.type('first');
+    await page.keyboard.press(route === '/composer' ? 'Shift+Enter' : 'Enter');
+    await page.keyboard.type('second');
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('ControlOrMeta+a');
+      await expect.poll(() => page.evaluate(() => window.getSelection()?.toString().replace(/\s+/g, ' ').trim())).toBe('first second');
+    }
+    await page.keyboard.type('replacement');
+    await expect(editor(page)).toHaveText('replacement');
+  });
+}
+
+test('slash list commands show markers on empty and populated items', async ({ page }) => {
+  await open(page); await caret(page);
+  await page.keyboard.type('/bullet'); await page.keyboard.press('Enter');
+  const item = editor(page).locator('.dx-block[data-list=bullet]');
+  await expect(item).toHaveCount(1);
+  await expect.poll(() => item.evaluate(el => getComputedStyle(el, '::before').content)).toBe('"•"');
+  await page.keyboard.type('List item');
+  await expect.poll(() => item.evaluate(el => getComputedStyle(el, '::before').content)).toBe('"•"');
+  await page.keyboard.press('ControlOrMeta+Alt+0');
+  await expect(editor(page).locator('.dx-block[data-list]')).toHaveCount(0);
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(item).toHaveCount(1);
+  await page.keyboard.press('ControlOrMeta+Shift+7');
+  const numbered = editor(page).locator('.dx-block[data-list=numbered]');
+  await expect(numbered).toHaveAttribute('data-number', '1.');
+  await page.keyboard.press('Enter'); await page.keyboard.type('Second item');
+  await expect(numbered.nth(1)).toHaveAttribute('data-number', '2.');
+  await caret(page, numbered.first());
+  await page.keyboard.press('ControlOrMeta+Alt+0');
+  await expect(numbered).toHaveCount(1);
+  await expect(numbered).toHaveAttribute('data-number', '1.');
+});

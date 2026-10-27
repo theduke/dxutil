@@ -71,7 +71,23 @@ impl Renderer {
             append(root, &g)?;
             g
         };
-        if plan.full || plan.structure_changed || self.blocks.is_empty() {
+        // List markers and numbering depend on sibling order. A content-only
+        // conversion must refresh the group metadata just like a structural edit.
+        let list_changed = plan.dirty.iter().any(|uid| {
+            let old = self.cache.get(uid);
+            let new = e.content(uid);
+            let is_list = |node: &ComponentNode| {
+                matches!(
+                    node.kind.0.as_str(),
+                    "bulleted_list_item" | "numbered_list_item"
+                )
+            };
+            (old.is_some_and(is_list) || new.is_some_and(is_list))
+                && (old.map(|n| &n.kind) != new.map(|n| &n.kind)
+                    || old.and_then(|n| n.attrs.get("start"))
+                        != new.and_then(|n| n.attrs.get("start")))
+        });
+        if plan.full || plan.structure_changed || list_changed || self.blocks.is_empty() {
             let mut live = BTreeSet::new();
             self.group(
                 &doc,
