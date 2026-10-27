@@ -1130,7 +1130,10 @@ fn exit(e: &mut EditorEngine, kind: &str) -> Vec<EngineOutput> {
 }
 fn select_all(e: &mut EditorEngine) -> Vec<EngineOutput> {
     let order = model::block_order(&e.doc);
+    // Cross-block text clipboard slices flatten nested children. Preserve whole
+    // blocks for trees and nontext content, including collapsed descendants.
     if let (Some(first), Some(last)) = (order.first(), order.last())
+        && model::children(&e.doc, None).is_some_and(|blocks| blocks.len() == order.len())
         && order.iter().all(|uid| {
             e.content(uid)
                 .is_some_and(|content| model::is_text_kind(&content.kind.0))

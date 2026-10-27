@@ -220,3 +220,32 @@ test('slash list commands show markers on empty and populated items', async ({ p
   await expect(numbered).toHaveCount(1);
   await expect(numbered).toHaveAttribute('data-number', '1.');
 });
+
+for (const collapsed of [false, true]) {
+  test(`select all preserves nested blocks when copied, replaced and undone (collapsed=${collapsed})`, async ({ page }) => {
+    await open(page, '/blocks?fixture=toggle');
+    await caret(page, editor(page).getByText('After toggle'));
+    await page.keyboard.press('Escape'); await page.keyboard.press('Backspace');
+    if (collapsed) await editor(page).locator('.dx-block-native-control button').click();
+    await caret(page, editor(page).locator('[data-content-kind=toggle]'));
+    const before = (await state(page)).document;
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('ControlOrMeta+a');
+      await expect(editor(page).locator('.dx-block[data-selected]')).toHaveCount(2);
+    }
+    const copied = await editor(page).evaluate(element => {
+      const transfer = new DataTransfer();
+      const event = new ClipboardEvent('copy', { bubbles: true, cancelable: true, clipboardData: transfer });
+      Object.defineProperty(event, 'clipboardData', { value: transfer });
+      element.dispatchEvent(event);
+      return JSON.parse(transfer.getData('application/x-semantic-dxeditor+json')).slice;
+    });
+    expect(copied.content).toHaveLength(1);
+    const children = copied.content[0].content.find((node: any) => node.kind === 'block_children');
+    expect(children.content).toHaveLength(1);
+    await page.keyboard.type('X');
+    await expect(editor(page)).toHaveText('X');
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect.poll(async () => (await state(page)).document).toEqual(before);
+  });
+}

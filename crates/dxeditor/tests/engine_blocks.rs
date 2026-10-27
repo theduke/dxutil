@@ -396,21 +396,62 @@ fn clearing_a_block_selection_leaves_a_genuinely_empty_paragraph() {
 
 #[test]
 fn select_all_selects_every_text_block_on_the_first_press_and_is_idempotent() {
-    let a = p("first");
-    let b = p("second");
-    let first = uid(&a);
-    let last = uid(&b);
-    let mut e = engine(vec![a, b]);
-    caret(&mut e, &last, 3);
-    let expected = EditorSelection::Text(dxeditor::engine::TextRange {
-        anchor: dxeditor::engine::TextPoint::new(InlineContainerRef::Block(first), 0),
-        head: dxeditor::engine::TextPoint::new(InlineContainerRef::Block(last), 6),
-    });
-    for _ in 0..3 {
-        e.run(Command::SelectAll);
-        assert_eq!(e.selection(), &expected);
+    for lines in [&[""][..], &["🌍"][..], &["first", "second 🌍"][..]] {
+        let mut e = engine(lines.iter().map(|line| p(line)).collect());
+        let first = uid(&root(&e)[0]);
+        let last = uid(root(&e).last().unwrap());
+        let length = lines.last().unwrap().chars().count();
+        caret(&mut e, &last, length);
+        let before = e.document().clone();
+        let expected = EditorSelection::Text(dxeditor::engine::TextRange {
+            anchor: dxeditor::engine::TextPoint::new(InlineContainerRef::Block(first), 0),
+            head: dxeditor::engine::TextPoint::new(InlineContainerRef::Block(last), length),
+        });
+        for _ in 0..3 {
+            e.run(Command::SelectAll);
+            assert_eq!(e.selection(), &expected);
+        }
+        e.run(Command::InsertText("replacement".into()));
+        assert_eq!(root(&e).len(), 1);
+        assert_eq!(root(&e)[0].text_content(), "replacement");
+        e.run(Command::Undo);
+        assert_eq!(e.document(), &before);
     }
-    e.run(Command::InsertText("replacement".into()));
-    assert_eq!(root(&e).len(), 1);
-    assert_eq!(root(&e)[0].text_content(), "replacement");
+}
+
+#[test]
+fn select_all_preserves_nested_and_nontext_blocks() {
+    for (nested, collapsed) in [(true, false), (true, true), (false, false)] {
+        let mut first = p("summary");
+        if nested {
+            first.content[0].kind = "toggle".into();
+            first.content.push(ComponentNode::container(
+                "block_children",
+                None,
+                vec![p("child")],
+            ));
+        } else {
+            first = model::block_node(ComponentNode::new("divider"));
+        }
+        let first_id = uid(&first);
+        let mut e = engine(vec![first, p("tail")]);
+        if collapsed {
+            e.run(Command::SetCollapsed(vec![first_id.clone()]));
+        }
+        let before = e.document().clone();
+        let order = model::block_order(e.document());
+        let expected = EditorSelection::Blocks {
+            anchor: first_id,
+            head: order.last().unwrap().clone(),
+        };
+        for _ in 0..3 {
+            e.run(Command::SelectAll);
+            assert_eq!(e.selection(), &expected);
+        }
+        e.run(Command::InsertText("replacement".into()));
+        assert_eq!(root(&e).len(), 1);
+        assert_eq!(root(&e)[0].text_content(), "replacement");
+        e.run(Command::Undo);
+        assert_eq!(e.document(), &before);
+    }
 }
