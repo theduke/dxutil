@@ -1,6 +1,7 @@
 //! Content-agnostic graph models, geometry, layouts, and Dioxus rendering.
 use dioxus::prelude::*;
 pub mod canvas;
+pub use canvas::use_node_ready;
 pub use canvas::{
     Activation, CanvasConfig, ConnectEvent, ConnectHandle, DropAxis, EdgeRenderContext, FitInsets,
     GraphCanvas, GraphCanvasProps, GraphController, GraphControls, GraphMinimap, Guide,

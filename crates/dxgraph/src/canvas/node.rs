@@ -5,6 +5,17 @@ use super::{
 use crate::{NodeId, Point, Size};
 use dioxus::prelude::*;
 
+#[derive(Clone, Copy)]
+struct NodeReady(Signal<bool>);
+
+/// Whether the surrounding node has left its hidden measurement phase.
+/// Editors can mount and measure immediately, then take focus once visible.
+/// Returns true when called outside a canvas node.
+pub fn use_node_ready() -> bool {
+    let ready = try_use_context::<NodeReady>();
+    ready.is_none_or(|ready| (ready.0)())
+}
+
 fn node_border_box(event: &ResizeEvent) -> Option<Size> {
     // Native resize events can bubble. A node's size must never replace the
     // container dimensions used by fit, center, and culling.
@@ -62,6 +73,14 @@ pub(crate) struct NodeViewProps<N: Clone + PartialEq + 'static> {
 
 #[allow(non_snake_case)]
 pub(crate) fn NodeView<N: Clone + PartialEq + 'static>(props: NodeViewProps<N>) -> Element {
+    let mut ready = use_signal(|| !props.hidden);
+    use_context_provider(|| NodeReady(ready));
+    // Publish after the visibility change has been committed to the DOM.
+    use_effect(use_reactive((&props.hidden,), move |(hidden,)| {
+        if *ready.peek() != !hidden {
+            ready.set(!hidden);
+        }
+    }));
     let mut mounted = use_signal(|| None::<std::rc::Rc<MountedData>>);
     let focus_id = props.id.clone();
     use_effect(move || {
@@ -177,6 +196,10 @@ mod tests {
     use super::*;
     use dioxus::html::{Code, HasKeyboardData, Key, Location, Modifiers, ModifiersInteraction};
     use dioxus::html::{HasResizeData, ResizeError, geometry::PixelsSize};
+    use std::{
+        cell::{Cell, RefCell},
+        rc::Rc,
+    };
     struct NodeKey(Key);
     impl ModifiersInteraction for NodeKey {
         fn modifiers(&self) -> Modifiers {
@@ -266,5 +289,62 @@ mod tests {
             !event.propagates(),
             "A node resize must not reach the canvas resize handler"
         );
+    }
+
+    #[derive(Clone, Props, PartialEq)]
+    struct MeasurementFixtureProps {
+        hidden: Rc<Cell<Option<Signal<bool>>>>,
+        observed: Rc<RefCell<Vec<bool>>>,
+    }
+
+    #[component]
+    fn ReadyObserver(observed: Rc<RefCell<Vec<bool>>>) -> Element {
+        let ready = use_node_ready();
+        use_effect(use_reactive((&ready,), move |(ready,)| {
+            observed.borrow_mut().push(ready)
+        }));
+        rsx! {}
+    }
+
+    #[allow(non_snake_case)]
+    fn MeasurementFixture(props: MeasurementFixtureProps) -> Element {
+        let hidden = use_signal(|| true);
+        props.hidden.set(Some(hidden));
+        let controller = super::super::use_graph_controller();
+        rsx! {
+            NodeView {
+                id: NodeId::from("idea"), controller, data: (),
+                position: Point::default(), size: Size::new(100.0, 40.0),
+                selected: true, hidden: hidden(), detail: NodeDetail::Full, label: "Idea".to_owned(),
+                render_node: move |_| rsx! { ReadyObserver { observed: props.observed.clone() } },
+                render_minimal: None,
+                on_pointer: |_| {}, on_measure: |_| {}, on_activate: |_| {},
+                on_select: |_| {}, on_focus: |_| {}, host_key_down: None,
+                draggable: false, tab_stop: true, connect_target: false,
+            }
+        }
+    }
+
+    #[test]
+    fn node_content_waits_for_measurement_visibility_before_activation() {
+        let hidden = Rc::new(Cell::new(None));
+        let observed = Rc::new(RefCell::new(Vec::new()));
+        let mut dom = VirtualDom::new_with_props(
+            MeasurementFixture,
+            MeasurementFixtureProps {
+                hidden: hidden.clone(),
+                observed: observed.clone(),
+            },
+        );
+        dom.rebuild_in_place();
+        for expected in [false, true, false, true] {
+            if let Some(mut hidden) = hidden.get() {
+                hidden.set(!expected);
+            }
+            for _ in 0..3 {
+                dom.render_immediate_to_vec();
+            }
+            assert_eq!(observed.borrow().last(), Some(&expected));
+        }
     }
 }

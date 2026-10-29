@@ -9,6 +9,7 @@ mod controls;
 mod edges;
 mod keyboard;
 mod node;
+pub use node::use_node_ready;
 mod origin;
 mod pipeline;
 mod state;
