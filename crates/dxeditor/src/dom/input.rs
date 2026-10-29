@@ -606,15 +606,24 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
                 }
             }
         }
-        if inside_island(&event, &host.borrow().root) {
-            return;
-        }
-        let uid = target_element(&event)
+        let uid = (!inside_island(&event, &host.borrow().root))
+            .then(|| target_element(&event))
+            .flatten()
             .and_then(|e| e.closest(".dx-block[data-uid]").ok().flatten())
             .and_then(|e| e.get_attribute("data-uid"));
         let output = host.borrow().engine.borrow_mut().set_hover_block(uid);
         DomHost::publish(host, output);
     })?;
+    DomHost::listen(
+        host,
+        focus_owner.as_ref(),
+        "pointerleave",
+        false,
+        |host, _| {
+            let output = host.borrow().engine.borrow_mut().set_hover_block(None);
+            DomHost::publish(host, output);
+        },
+    )?;
     DomHost::listen(host, doc.as_ref(), "pointerup", false, |host, _| {
         host.borrow_mut().cell_drag = None;
     })?;

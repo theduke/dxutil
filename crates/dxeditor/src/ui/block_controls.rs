@@ -5,10 +5,19 @@ pub(super) fn BlockControls(
     handle: EngineHandle,
     catalog: EditorCatalog,
 ) -> Element {
-    if ui.read_only || ui.composing || catalog.component_specs().spec_by_id("heading").is_none() {
+    // Graph nodes have their own structural controls outside this nested editor.
+    if ui.read_only
+        || ui.composing
+        || ui.profile == crate::engine::Profile::GraphNode
+        || catalog.component_specs().spec_by_id("heading").is_none()
+    {
         return rsx! {};
     }
-    let Some(uid) = ui.hover_block.clone().or(ui.selection.uid.clone()) else {
+    let Some(uid) = ui
+        .hover_block
+        .clone()
+        .or_else(|| ui.focused.then(|| ui.selection.uid.clone()).flatten())
+    else {
         return rsx! {};
     };
     let Some(rect) = ui.geometry.block else {

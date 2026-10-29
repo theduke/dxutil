@@ -527,6 +527,11 @@ fn adopted_island_survives_attribute_updates_moves_and_undo() {
     fixture.host.borrow_mut().island_ready(&uid);
     let adopted_parent = island.parent_element().unwrap();
     assert!(fixture.root().contains(Some(&island)));
+    input
+        .dyn_ref::<web_sys::HtmlElement>()
+        .unwrap()
+        .focus()
+        .unwrap();
     DomHost::run(
         &fixture.host,
         Command::UpdateNodeAttrs {
@@ -536,6 +541,7 @@ fn adopted_island_survives_attribute_updates_moves_and_undo() {
         },
     );
     assert_eq!(island.parent_element(), Some(adopted_parent));
+    assert_eq!(document.active_element(), Some(input.clone()));
     DomHost::run(&fixture.host, Command::RemoveNode(uid.clone()));
     assert_eq!(island.parent_element(), Some(parking));
     DomHost::run(&fixture.host, Command::Undo);
@@ -1563,11 +1569,12 @@ fn contextual_toolbar_focus_stays_owned_until_leaving_editor() {
 
 #[wasm_bindgen_test]
 fn editor_inside_an_outer_island_owns_its_own_focus() {
+    let outer = Fixture::new(vec![model::block_node(ComponentNode::new("graph"))]);
     let fixture = Fixture::new(vec![paragraph("Nested editor")]);
     let document = fixture.wrapper.owner_document().unwrap();
     let island = document.create_element("div").unwrap();
     island.set_class_name("dxeditor-island");
-    document.body().unwrap().append_child(&island).unwrap();
+    outer.root().append_child(&island).unwrap();
     island.append_child(&fixture.wrapper).unwrap();
     fixture
         .root()
@@ -1576,6 +1583,21 @@ fn editor_inside_an_outer_island_owns_its_own_focus() {
         .focus()
         .unwrap();
     assert!(fixture.engine().borrow().ui_state().focused);
+    let selection = document.get_selection().unwrap().unwrap();
+    let anchor = selection.anchor_node();
+    assert!(selection_sync::read(&outer.root()).is_none());
+    DomHost::run(
+        &outer.host,
+        Command::UpdateNodeAttrs {
+            uid: outer.first_uid(),
+            attrs: serde_json::from_value(json!({"title":"New idea"})).unwrap(),
+            add_to_history: true,
+        },
+    );
+    assert_eq!(document.active_element(), Some(fixture.root()));
+    assert_eq!(selection.anchor_node(), anchor);
+    input(&fixture.root(), "insertText", Some(" typing"), true);
+    assert!(fixture.text().contains("typing"));
     fixture.wrapper.remove();
     island.remove();
 }

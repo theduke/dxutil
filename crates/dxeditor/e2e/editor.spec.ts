@@ -15,6 +15,52 @@ test('typing, Enter, Backspace and history publish immediately', async ({ page }
   expect(errors).toEqual([]);
 });
 
+for (const route of ['/blocks', '/graph-node', '/composer']) {
+  test(`${route}: new paragraphs stay visible inside a scrolled editor`, async ({ page }) => {
+    await open(page, route);
+    const scroller = route === '/composer' ? editor(page) : page.locator('.dxeditor__document');
+    await scroller.evaluate(element => {
+      (element as HTMLElement).style.cssText += ';max-height:120px;min-height:0;overflow:auto';
+    });
+    await caret(page);
+    for (let i = 0; i < 16; i++) {
+      await page.keyboard.type(`Line ${i}`);
+      await page.keyboard.press(route === '/composer' ? 'Shift+Enter' : 'Enter');
+    }
+    await expect.poll(() => scroller.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    await expect.poll(() => scroller.evaluate(element => {
+      const selection = window.getSelection()!;
+      const node = selection.focusNode!;
+      const line = (node.nodeType === Node.ELEMENT_NODE ? node as Element : node.parentElement!)
+        .closest('[data-inline-container]')!;
+      const bounds = element.getBoundingClientRect();
+      return line.getBoundingClientRect().bottom - bounds.bottom;
+    })).toBeLessThanOrEqual(1);
+    await expect(editor(page)).toBeFocused();
+
+    // Hover and resize measurements must not undo deliberate scrolling.
+    expect(await scroller.evaluate(async element => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+      window.dispatchEvent(new Event('resize'));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return element.scrollTop;
+    })).toBe(0);
+  });
+}
+
+test('graph node formatting keeps focus without document block controls', async ({ page }) => {
+  await open(page, '/graph-node');
+  await caret(page);
+  await page.keyboard.type('Idea');
+  await editor(page).locator('p').hover();
+  await expect(page.getByRole('button', { name: 'Insert block', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Block actions', exact: true })).toHaveCount(0);
+  await selectText(editor(page).locator('p'));
+  await page.getByRole('button', { name: 'Bold', exact: true }).click();
+  await expect(editor(page).locator('strong')).toHaveText('Idea');
+});
+
 test('format shortcuts, hard breaks and Unicode grapheme deletion', async ({ page }) => {
   await open(page); await caret(page);
   await page.keyboard.press('ControlOrMeta+b'); await page.keyboard.type('bold');

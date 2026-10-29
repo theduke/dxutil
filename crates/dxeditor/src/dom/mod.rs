@@ -7,6 +7,7 @@ pub mod islands;
 pub mod mapping;
 pub mod media;
 pub mod render;
+mod scrolling;
 pub mod selection_sync;
 use crate::engine::{
     Command, EditorEngine, EngineInput, EngineOutput, FocusTarget, InlineContainerRef, RenderPlan,
@@ -48,6 +49,7 @@ pub struct DomHost {
     pub(crate) cell_drag: Option<(String, (usize, usize))>,
     pub(crate) table_drag: Option<(String, usize)>,
     frame: Option<i32>,
+    scroll_selection: bool,
     last_geometry: crate::engine::ui_state::Geometry,
 }
 impl DomHost {
@@ -153,6 +155,7 @@ impl DomHost {
             cell_drag: None,
             table_drag: None,
             frame: None,
+            scroll_selection: false,
             last_geometry: crate::engine::ui_state::Geometry::default(),
         }));
         {
@@ -366,6 +369,9 @@ impl DomHost {
                     return;
                 }
                 h.reconcile_focus();
+                if std::mem::take(&mut h.scroll_selection) && h.engine.borrow().focused {
+                    scrolling::reveal_selection(&h.root, &h.engine.borrow());
+                }
                 let geometry = geometry::measure(&h.root, &h.engine.borrow());
                 h.last_geometry = geometry.clone();
                 let mut state = h.engine.borrow().ui_state();
@@ -457,7 +463,16 @@ impl DomHost {
             );
         }
         let selection_started = now_ms();
+        // A parent document can receive island attribute updates while a
+        // nested editor owns focus. Its retained selection must not take over
+        // the browser's single selection (and with it keyboard focus).
+        let owns_selection = self.root.owner_document().is_some_and(|document| {
+            document
+                .active_element()
+                .is_none_or(|active| active.tag_name() == "BODY" || self.owns_focus(&active))
+        });
         if self.composing.is_none()
+            && owns_selection
             && output.iter().any(|o| {
                 matches!(
                     o,
@@ -468,6 +483,11 @@ impl DomHost {
             selection_sync::write_with(&self.root, &self.engine.borrow(), |point| {
                 self.renderer.point(&self.root, point)
             });
+            // Reveal after layout, coalesced with the geometry frame. Pure
+            // geometry/hover updates must preserve deliberate user scrolling.
+            self.scroll_selection |= output
+                .iter()
+                .any(|o| matches!(o, EngineOutput::Render(_) | EngineOutput::Focus { .. }));
         }
         if self.root.has_attribute("data-measure-timings") {
             let _ = self.root.set_attribute(

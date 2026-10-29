@@ -36,7 +36,9 @@ pub fn write_with(
         if let Ok(nodes) = root.query_selector_all("[data-selected]") {
             for i in 0..nodes.length() {
                 if let Some(e) = nodes.item(i).and_then(|n| n.dyn_into::<Element>().ok()) {
-                    let _ = e.remove_attribute("data-selected");
+                    if mapping::owns_node(root, e.as_ref()) {
+                        let _ = e.remove_attribute("data-selected");
+                    }
                 }
             }
         }

@@ -17,6 +17,8 @@ test('block duplicate refreshes identities and undo restores the original',async
   await expect.poll(async ()=>blocks((await state(page)).document).length).toBe(2);
   const ids=blocks((await state(page)).document).map((block:any)=>block.id); expect(new Set(ids).size).toBe(2); expect(ids[0]).toBe(first);
   await page.getByRole('button',{name:'Undo',exact:true}).click(); await expect.poll(async ()=>blocks((await state(page)).document).length).toBe(1);
+  await page.getByRole('heading', { name: 'Rust editor harness' }).hover();
+  await expect(page.getByRole('button', { name: 'Block actions', exact: true })).toHaveCount(0);
 });
 
 test('plain table menu toggles both headers and edits explicit axes',async ({page})=>{

@@ -28,6 +28,31 @@ fn visible_range_rect(range: &Range) -> Option<Rect> {
         && bounds.height.is_finite())
     .then_some(bounds)
 }
+
+/// Screen coordinates of the caret, including empty lines after hard breaks.
+pub(super) fn caret_rect(root: &Element, engine: &EditorEngine) -> Option<Rect> {
+    let point = &engine.selection().text_range()?.head;
+    let (node, offset) = super::mapping::to_dom(root, point)?;
+    let range = root.owner_document()?.create_range().ok()?;
+    range.set_start(&node, offset).ok()?;
+    range.collapse_with_to_start(true);
+    if let Some(rect) = visible_range_rect(&range) {
+        return Some(rect);
+    }
+    // A boundary after BR is parent-anchored. The renderer keeps a trailing
+    // text anchor on the new line; measure it without rewriting selection.
+    if let Some(next) = node.child_nodes().item(offset) {
+        range.set_start(&next, 0).ok()?;
+        range.collapse_with_to_start(true);
+        if let Some(rect) = visible_range_rect(&range) {
+            return Some(rect);
+        }
+    }
+    // Empty paragraphs contain a placeholder BR with no measurable range.
+    let (inline, _) = super::mapping::container(&node, root)?;
+    let bounds = rect(inline.get_bounding_client_rect());
+    (bounds.height > 0.0).then_some(bounds)
+}
 pub fn measure(root: &Element, e: &EditorEngine) -> Geometry {
     let wrapper = root
         .closest(".dxeditor, .dx-composer-editor")
@@ -119,14 +144,7 @@ pub fn measure(root: &Element, e: &EditorEngine) -> Geometry {
     // Stable end carets are parent-anchored to avoid browser selection layout
     // during typing. Chromium reports an empty rectangle at those boundaries;
     // measure an equivalent text-node range without changing native selection.
-    let caret = selection.or_else(|| {
-        let point = &e.selection().text_range()?.head;
-        let (node, offset) = super::mapping::to_dom(root, point)?;
-        let range = root.owner_document()?.create_range().ok()?;
-        range.set_start(&node, offset).ok()?;
-        range.collapse_with_to_start(true);
-        visible_range_rect(&range).map(local)
-    });
+    let caret = selection.or_else(|| caret_rect(root, e).map(local));
     let block = e
         .ui_state()
         .hover_block

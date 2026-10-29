@@ -3,6 +3,19 @@ use crate::engine::{InlineContainerRef, TextPoint};
 use wasm_bindgen::JsCast;
 use web_sys::{Element, Node};
 pub const ZW: &str = "\u{feff}";
+/// Islands, including any nested editors, own their descendants' selection.
+pub(crate) fn owns_node(root: &Element, node: &Node) -> bool {
+    if !root.contains(Some(node)) {
+        return false;
+    }
+    let element = node
+        .dyn_ref::<Element>()
+        .cloned()
+        .or_else(|| node.parent_element());
+    !element
+        .and_then(|element| element.closest(".dxeditor-island").ok().flatten())
+        .is_some_and(|island| root.contains(Some(&island)))
+}
 pub fn container(node: &Node, root: &Element) -> Option<(Element, InlineContainerRef)> {
     let mut at = if node.node_type() == Node::ELEMENT_NODE {
         node.dyn_ref::<Element>().cloned()
@@ -89,7 +102,7 @@ fn before(root: &Node, target: &Node, offset: u32) -> Option<usize> {
     None
 }
 pub fn from_dom(root: &Element, node: &Node, offset: u32) -> Option<TextPoint> {
-    if !root.contains(Some(node)) {
+    if !owns_node(root, node) {
         return None;
     }
     let (element, container) = container(node, root)?;
