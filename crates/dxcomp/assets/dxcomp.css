@@ -1854,16 +1854,29 @@ td:has(.dx-calendar-grid-cell[data-selection-end="true"]) {
 }
 
 .dx-dialog-close {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  align-self: flex-start;
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--dx-control-height);
+  padding: 0 0.875rem;
   border: none;
   margin: 0;
   background: none;
   color: var(--secondary-color-3);
   cursor: pointer;
+  font-family: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25;
+}
+
+/* Only a direct child is a corner close control; nested actions stay in flow. */
+.dx-dialog > .dx-dialog-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0;
   font-size: 18px;
   line-height: 1;
 }
@@ -5816,7 +5829,10 @@ a.dx-item:hover {
   line-height: 1.55;
 }
 
-.dx-dialog-close,
+.dx-dialog-close {
+  border-radius: var(--dx-radius-sm);
+}
+
 .dx-toast-close {
   display: inline-grid;
   width: 2rem;
