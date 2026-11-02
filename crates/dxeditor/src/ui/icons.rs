@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 #[component]
 pub(super) fn Icon(name: String) -> Element {
     let path = match name.as_str() {
+        "plus" => "M12 4v16M4 12h16",
         "paragraph" => "M14 20V4H9a5 5 0 0 0 0 10h2M11 4v16M18 4v16",
         "heading" => "M5 4v16M19 4v16M5 12h14",
         "bulleted_list_item" => "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01",

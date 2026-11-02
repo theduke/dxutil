@@ -1,4 +1,5 @@
 //! Browser adapter. The engine owns no browser objects and remains native-testable.
+mod block_drag;
 mod clipboard;
 mod composer;
 pub mod geometry;

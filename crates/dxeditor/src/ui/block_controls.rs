@@ -36,8 +36,8 @@ pub(super) fn BlockControls(
     let mobile = ui.geometry.viewport.width * sx <= 640.0 && ui.geometry.viewport.width > 0.0;
     let placement = format!(
         "left:{}px;top:{}px;transform:scale({},{});transform-origin:top left",
-        rect.x - if mobile { 36.0 / sx } else { 68.0 / sx },
-        rect.y.max(0.0),
+        rect.x - if mobile { 52.0 / sx } else { 56.0 / sx },
+        rect.y.max(0.0) + 2.0 / sy,
         1.0 / sx,
         1.0 / sy
     );
@@ -45,14 +45,19 @@ pub(super) fn BlockControls(
     let add_handle = handle.clone();
     let menu_uid = uid.clone();
     let menu_handle = handle.clone();
-    rsx! {div{class:"dxeditor-gutter",style:"{placement}",
+    rsx! {div{class:"dxeditor-gutter dxeditor-engine__block-controls",style:"{placement}",
         button{r#type:"button",class:"dxeditor-engine__button",title:"Insert block (Alt: above)",aria_label:"Insert block",onmousedown:move|e|e.prevent_default(),onclick:move|event|{
             let mut block=crate::engine::model::paragraph();let new_uid=block.id.as_ref().unwrap().0.clone();block.content[0].content=vec![crate::ComponentNode::text("/")];
             add_handle.run(Command::InsertBlocks{at:crate::InsertAt::AfterBlock{uid:add_uid.clone()},nodes:vec![block]});
             if event.modifiers().alt(){add_handle.run(Command::MoveBlocks{uids:vec![new_uid.clone()],target:add_uid.clone(),placement:crate::engine::commands::BlockPlacement::Before});}
             add_handle.run(Command::SetSelection(EditorSelection::caret(InlineContainerRef::Block(new_uid),1)));add_handle.run(Command::Focus);
-        },"+"}
-        button{r#type:"button",class:"dxeditor-engine__button",title:"Block actions",aria_label:"Block actions",aria_haspopup:"menu",draggable:true,"data-dxeditor-drag":"{uid}","data-uid":"{uid}",onmousedown:move|e|e.prevent_default(),onclick:move |_|{menu_handle.run(Command::SelectNode(menu_uid.clone()));menu_handle.run(Command::OpenMenu("block".into()));},"⠿"}
+            },icons::Icon{name:"plus"}}
+            // Cancelling mousedown here prevents native dragging in browsers.
+            button{r#type:"button",class:"dxeditor-engine__button dxeditor-block-grip",title:"Drag to move · Click for actions",aria_label:"Block actions","aria-description":"Drag to reorder. Click for block actions, including Move up and Move down.",aria_haspopup:"menu",draggable:true,"data-dxeditor-drag":"{uid}","data-uid":"{uid}",onclick:move |_|{menu_handle.run(Command::SelectNode(menu_uid.clone()));menu_handle.run(Command::OpenMenu("block".into()));},
+                svg{width:"12",height:"18",view_box:"0 0 12 18",fill:"currentColor","aria-hidden":"true","focusable":"false",
+                    for (x,y) in [(3,4),(9,4),(3,9),(9,9),(3,14),(9,14)]{circle{cx:"{x}",cy:"{y}",r:"1.35"}}
+                }
+            }
     }}
 }
 #[component]

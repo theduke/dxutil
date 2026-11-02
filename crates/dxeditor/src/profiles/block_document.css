@@ -1,5 +1,5 @@
 .dxeditor--blocks { width: min(100%, 880px); color: var(--dx-text, var(--semantic-color-text, #17202a)); background: var(--dx-surface, var(--semantic-color-surface-1, white)); border-color: var(--dx-border, var(--semantic-color-border, #cfd8e3)); }
-.dxeditor--blocks .dxeditor__document { padding: 24px 80px; background: var(--dx-surface, var(--semantic-color-surface-1, white)); }
+.dxeditor.dxeditor--blocks[data-engine] .dxeditor__document { padding: 24px 80px; background: var(--dx-surface, var(--semantic-color-surface-1, white)); }
 .dxeditor--blocks .dxeditor-engine__surface { color: var(--dx-text, var(--semantic-color-text, #17202a)); background: var(--dx-surface, var(--semantic-color-surface-1, white)); border-color: var(--dx-border, var(--semantic-color-border, #cfd8e3)); }
 .dxeditor--blocks .dxeditor-engine__button, .dxeditor--blocks .dxeditor__button { color: inherit; background: transparent; min-height: 32px; }
 .dxeditor--blocks .dxeditor-engine__button:hover { background: var(--dx-surface-muted, var(--semantic-color-surface-2, #f6f8fa)); color: var(--dx-accent, var(--semantic-color-primary, #176b87)); }
@@ -48,16 +48,22 @@
 .dxeditor-engine__blocks [data-color=red], .dxeditor-engine__blocks [data-text-color=red] { color: #be4f4f; }
 .dxeditor-engine__blocks [data-highlight], .dxeditor-engine__blocks [data-background-color] { background: color-mix(in srgb, currentColor 12%, transparent); }
 @media (max-width: 640px) {
-  .dxeditor.dxeditor--blocks[data-engine] .dxeditor__document { padding: 16px 12px 16px 40px; }
+  .dxeditor.dxeditor--blocks[data-engine] .dxeditor__document { padding: 16px 12px 16px 64px; }
   .dx-block-group .dx-block-group { margin-left: 16px; }
 }
 .dx-block[data-selected] { background: color-mix(in srgb, var(--dx-accent, #176b87) 12%, transparent); border-radius: 4px; }
-.dx-block-drag-ghost { position: fixed; z-index: 1000; opacity: .6; max-height: 120px; overflow: hidden; pointer-events: none; width: min(640px,80vw); background: var(--dx-surface,white); }
-.dx-block-drop-indicator { z-index: 1001; height: 2px; background: var(--dx-accent,#176b87); pointer-events: none; }
-.dxeditor--blocks .dxeditor-engine__block-controls { flex-direction: row; gap: 4px; background: transparent; opacity: .7; transition: opacity 120ms ease-out; }
-.dxeditor--blocks .dxeditor-engine__block-controls::after { pointer-events: none; }
-.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button { width: 32px; height: 32px; min-width: 32px; min-height: 32px; }
-@media (max-width: 640px) { .dxeditor--blocks .dxeditor-engine__block-controls { flex-direction: column; gap: 0; width: 32px; } }
+.dx-block-drag-ghost { position: fixed; z-index: 1000; opacity: .65; max-height: 120px; overflow: hidden; pointer-events: none; background: var(--dx-surface,white); }
+.dx-block[data-dragging] { opacity: .35; }
+.dx-block-drop-indicator { position: fixed; z-index: 10000; height: 3px; border-radius: 2px; background: var(--dx-drop-color,#83bffa); pointer-events: none; transform: translateY(-50%); }
+.dx-block-drop-indicator::before { content: ''; position: absolute; top: -2px; left: -3px; width: 7px; height: 7px; box-sizing: border-box; border: 2px solid var(--dx-drop-color,#83bffa); border-radius: 50%; background: var(--dx-drop-surface,white); }
+.dxeditor--blocks .dxeditor-engine__block-controls { flex-direction: row; gap: 0; padding: 0; border: 0; background: transparent; box-shadow: none; user-select: none; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 24px; height: 28px; min-width: 24px; min-height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; box-shadow: none; color: var(--dx-text-muted,var(--semantic-color-text-muted,#9b9b96)); opacity: .7; transition: background-color 100ms ease-out, opacity 100ms ease-out; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button:hover { opacity: 1; color: var(--dx-text-muted,var(--semantic-color-text-muted,#787873)); background: var(--dx-surface-muted,var(--semantic-color-surface-2,#efefed)); }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button:focus-visible { opacity: 1; outline: 2px solid var(--dx-accent,var(--semantic-color-primary,#2383e2)); outline-offset: 1px; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-block-grip { cursor: grab; touch-action: none; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-block-grip:active { cursor: grabbing; }
+.dxeditor--blocks:has([data-block-dragging]) .dxeditor-block-grip { cursor: grabbing; }
+@media (prefers-reduced-motion: reduce) { .dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button { transition: none; } }
 .dxeditor--blocks .dxeditor-engine__block-table { flex-wrap: wrap; max-width: min(520px, calc(100vw - 24px)); }
 .dxeditor--blocks .dxeditor-engine__block-table details[open] { display: flex; flex-wrap: wrap; max-width: 320px; }
 .dxeditor--blocks .dxeditor-engine__blocks [data-background-color=gray] { background-color: color-mix(in srgb,#737b86 18%,transparent); }
@@ -69,7 +75,6 @@
 .dxeditor--blocks .dxeditor-engine__blocks [data-background-color=purple] { background-color: color-mix(in srgb,#8462b5 18%,transparent); }
 .dxeditor--blocks .dxeditor-engine__blocks [data-background-color=pink] { background-color: color-mix(in srgb,#b34f8b 18%,transparent); }
 .dxeditor--blocks .dxeditor-engine__blocks [data-background-color=red] { background-color: color-mix(in srgb,#be4f4f 18%,transparent); }
-.dxeditor--blocks .dxeditor-engine__block-controls:hover { opacity: 1; }
 .dxeditor--blocks .dxeditor-engine__slash, .dxeditor--blocks .dxeditor-engine__mentions { max-height: 360px; overflow-y: auto; min-width: 240px; }
 .dxeditor--blocks .dxeditor-engine__mentions { flex-direction: column; width: 280px; box-sizing: border-box; }
 .dxeditor--blocks .dxeditor-engine__mentions .dxeditor-engine__button { flex: none; overflow: hidden; text-align: left; text-overflow: ellipsis; white-space: nowrap; }

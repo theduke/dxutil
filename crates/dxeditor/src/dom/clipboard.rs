@@ -3,7 +3,7 @@ use super::{DomHost, Host, inside_island, selection_sync, target_element};
 use crate::engine::{
     Command, EditorSelection, EngineInput, EngineOutput,
     clipboard::{self, ClipboardSlice, PasteContent},
-    commands::{self, BlockPlacement},
+    commands,
     html::{self, HtmlNode},
     model, text,
 };
@@ -533,6 +533,12 @@ fn upload_files(host: &Host, files: Vec<web_sys::File>, at: crate::InsertAt) {
 }
 pub fn cancel_drag(host: &Host) {
     let mut h = host.borrow_mut();
+    for uid in &h.drag_uids {
+        if let Some(block) = h.renderer.blocks.get(uid) {
+            let _ = block.remove_attribute("data-dragging");
+        }
+    }
+    let _ = h.root.remove_attribute("data-block-dragging");
     h.drag_uids.clear();
     h.table_drag = None;
     h.drop_target = None;
@@ -635,19 +641,49 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         else {
             return;
         };
+        cancel_drag(host);
         let ids = {
             let h = host.borrow();
             let e = h.engine.borrow();
             let ids = commands::blocks::selected_uids(&e);
-            if ids.contains(&uid) { ids } else { vec![uid] }
+            if ids.contains(&uid) {
+                ids
+            } else {
+                vec![uid.clone()]
+            }
         };
+        if ids.is_empty() || !host.borrow().renderer.blocks.contains_key(&uid) {
+            event.prevent_default();
+            return;
+        }
         host.borrow_mut().drag_uids = ids.clone();
+        {
+            let current = host.borrow();
+            let _ = current.root.set_attribute("data-block-dragging", "true");
+            for id in &ids {
+                if let Some(block) = current.renderer.blocks.get(id) {
+                    let _ = block.set_attribute("data-dragging", "true");
+                }
+            }
+        }
         if let Some(data) = event.dyn_ref::<DragEvent>().and_then(|e| e.data_transfer()) {
             data.set_effect_allowed("move");
             let _ = data.set_data(
                 "application/x-semantic-blocks",
                 &serde_json::to_string(&ids).unwrap(),
             );
+            // Include a standard carrier for browser drag sessions and a
+            // useful text fallback when dropped into another application.
+            let plain = {
+                let current = host.borrow();
+                let engine = current.engine.borrow();
+                ids.iter()
+                    .filter_map(|uid| engine.block(uid))
+                    .map(|node| node.text_content())
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            };
+            let _ = data.set_data("text/plain", &plain);
             let source = host.borrow().renderer.blocks.get(&ids[0]).cloned();
             if let Some(source) = source {
                 if let Ok(ghost) = source
@@ -655,6 +691,8 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
                     .and_then(|node| node.dyn_into::<Element>().map_err(Into::into))
                 {
                     let _ = ghost.remove_attribute("id");
+                    let _ = ghost.remove_attribute("data-dragging");
+                    let _ = ghost.remove_attribute("data-selected");
                     if let Ok(nodes) = ghost.query_selector_all("[id]") {
                         for i in 0..nodes.length() {
                             if let Some(element) = nodes
@@ -667,7 +705,8 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
                     }
                     let _ = ghost.class_list().add_1("dx-block-drag-ghost");
                     let _ = ghost.set_attribute("aria-hidden", "true");
-                    let _=ghost.set_attribute("style","position:fixed;left:-10000px;top:0;max-height:120px;width:min(640px,80vw);overflow:hidden;opacity:.6;pointer-events:none");
+                    let width = source.get_bounding_client_rect().width().min(640.0);
+                    let _=ghost.set_attribute("style",&format!("position:fixed;left:-10000px;top:0;max-height:120px;width:{width}px;overflow:hidden;opacity:.65;pointer-events:none"));
                     if let Some(body) = ghost.owner_document().and_then(|doc| doc.body()) {
                         let _ = body.append_child(&ghost);
                         data.set_drag_image(&ghost, 10, 10);
@@ -679,8 +718,8 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             }
         }
     })?;
-    DomHost::listen(host, root.as_ref(), "dragover", false, |host, event| {
-        if inside_island(&event, &host.borrow().root) {
+    DomHost::listen(host, wrapper.as_ref(), "dragover", false, |host, event| {
+        if inside_island(&event, &host.borrow().root) && host.borrow().drag_uids.is_empty() {
             return;
         }
         let Some(drag) = event.dyn_ref::<DragEvent>() else {
@@ -690,6 +729,15 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             return;
         }
         event.prevent_default();
+        if !host.borrow().drag_uids.is_empty() {
+            event.stop_propagation();
+            if let Some(data) = drag.data_transfer() {
+                data.set_drop_effect("move");
+            }
+            super::block_drag::autoscroll(host, drag.client_x() as f64, drag.client_y() as f64);
+            super::block_drag::update_target(host, drag.client_x() as f64, drag.client_y() as f64);
+            return;
+        }
         let row_drag = host.borrow().table_drag.clone();
         if let Some((table, _)) = row_drag {
             if let Some((_, _, rect, after)) = row_drop_target(host, &table, drag.client_y() as f64)
@@ -704,61 +752,10 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             autoscroll(drag.client_y() as f64);
             return;
         }
-        let block =
-            target_element(&event).and_then(|e| e.closest(".dx-block[data-uid]").ok().flatten());
-        if let Some(block) = block {
-            let Some(uid) = block.get_attribute("data-uid") else {
-                return;
-            };
-            let r = block.get_bounding_client_rect();
-            let inside = drag.client_x() as f64 > r.x() + r.width() / 2.
-                && crate::engine::model::content(host.borrow().engine.borrow().document(), &uid)
-                    .is_some_and(|n| {
-                        host.borrow()
-                            .engine
-                            .borrow()
-                            .schema()
-                            .allows_children(&n.kind.0)
-                    });
-            let placement = if inside {
-                BlockPlacement::Inside
-            } else if (drag.client_y() as f64) < r.y() + r.height() / 2. {
-                BlockPlacement::Before
-            } else {
-                BlockPlacement::After
-            };
-            let mut h = host.borrow_mut();
-            h.drop_target = Some((uid, placement));
-            let doc = block.owner_document().unwrap();
-            let indicator = h.drag_indicator.get_or_insert_with(|| {
-                let el = doc.create_element("div").unwrap();
-                el.set_class_name("dx-block-drop-indicator");
-                let _ = doc.body().unwrap().append_child(&el);
-                el
-            });
-            let y = if placement == BlockPlacement::After {
-                r.bottom()
-            } else {
-                r.top()
-            };
-            let _=indicator.set_attribute("style",&format!("position:fixed;pointer-events:none;z-index:10000;left:{}px;top:{y}px;width:{}px;height:2px;background:var(--accent,#5684e9)",r.x()+if inside{24.}else{0.},r.width()-if inside{24.}else{0.}));
-        }
-        if let Some(w) = web_sys::window() {
-            let height = w
-                .inner_height()
-                .ok()
-                .and_then(|v| v.as_f64())
-                .unwrap_or(800.);
-            let y = drag.client_y() as f64;
-            if y < 48. {
-                w.scroll_by_with_x_and_y(0., -16.);
-            } else if y > height - 48. {
-                w.scroll_by_with_x_and_y(0., 16.);
-            }
-        }
+        autoscroll(drag.client_y() as f64);
     })?;
-    DomHost::listen(host, root.as_ref(), "drop", false, |host, event| {
-        if inside_island(&event, &host.borrow().root) {
+    DomHost::listen(host, wrapper.as_ref(), "drop", false, |host, event| {
+        if inside_island(&event, &host.borrow().root) && host.borrow().drag_uids.is_empty() {
             return;
         }
         let Some(drag) = event.dyn_ref::<DragEvent>() else {
@@ -769,6 +766,28 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         };
         event.prevent_default();
         if host.borrow().engine.borrow().read_only() {
+            cancel_drag(host);
+            return;
+        }
+        if !host.borrow().drag_uids.is_empty() {
+            event.stop_propagation();
+            // Recompute on drop: scrolling or the pointer may have changed
+            // since the final dragover event.
+            super::block_drag::update_target(host, drag.client_x() as f64, drag.client_y() as f64);
+            let ids = host.borrow().drag_uids.clone();
+            let target = host.borrow().drop_target.clone();
+            cancel_drag(host);
+            if let Some((target, placement)) = target {
+                DomHost::run(
+                    host,
+                    Command::MoveBlocks {
+                        uids: ids,
+                        target,
+                        placement,
+                    },
+                );
+                DomHost::run(host, Command::Focus);
+            }
             return;
         }
         if let Some(files) = data.files().filter(|f| f.length() > 0) {
@@ -839,21 +858,9 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             );
             return;
         }
-        let ids = host.borrow().drag_uids.clone();
-        let target = host.borrow().drop_target.clone();
         cancel_drag(host);
-        if !ids.is_empty() {
-            if let Some((target, placement)) = target {
-                DomHost::run(
-                    host,
-                    Command::MoveBlocks {
-                        uids: ids,
-                        target,
-                        placement,
-                    },
-                );
-            }
-        } else {
+        if target_element(&event).is_some_and(|element| host.borrow().root.contains(Some(&element)))
+        {
             let point = {
                 let current = host.borrow();
                 super::geometry::caret_from_point(
@@ -871,8 +878,49 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             paste(host, &data);
         }
     })?;
-    DomHost::listen(host, wrapper.as_ref(), "dragend", false, |host, _| {
+    let document = root.owner_document().unwrap();
+    DomHost::listen(host, document.as_ref(), "dragend", false, |host, _| {
         cancel_drag(host)
+    })?;
+    let owner = wrapper.clone();
+    DomHost::listen(
+        host,
+        document.as_ref(),
+        "dragover",
+        false,
+        move |host, event| {
+            if !host.borrow().drag_uids.is_empty()
+                && !target_element(&event).is_some_and(|target| owner.contains(Some(&target)))
+            {
+                super::block_drag::clear_target(host);
+            }
+        },
+    )?;
+    DomHost::listen(host, wrapper.as_ref(), "dragleave", false, |host, event| {
+        let leaving = event
+            .dyn_ref::<web_sys::MouseEvent>()
+            .and_then(|event| event.related_target())
+            .and_then(|target| target.dyn_into::<Element>().ok());
+        let owner = host
+            .borrow()
+            .root
+            .closest(".dxeditor,.dx-composer-editor")
+            .ok()
+            .flatten();
+        if !owner.is_some_and(|owner| leaving.is_some_and(|target| owner.contains(Some(&target)))) {
+            super::block_drag::clear_target(host);
+        }
+    })?;
+    DomHost::listen(host, document.as_ref(), "keydown", true, |host, event| {
+        if event
+            .dyn_ref::<web_sys::KeyboardEvent>()
+            .is_some_and(|event| event.key() == "Escape")
+            && (!host.borrow().drag_uids.is_empty() || host.borrow().table_drag.is_some())
+        {
+            event.prevent_default();
+            event.stop_propagation();
+            cancel_drag(host);
+        }
     })?;
     Ok(())
 }
@@ -908,19 +956,23 @@ fn row_drop_target(
             (index, count, rect, after)
         })
 }
-fn show_indicator(host: &Host, x: f64, y: f64, width: f64) {
+pub(super) fn show_indicator(host: &Host, x: f64, y: f64, width: f64) {
     let mut current = host.borrow_mut();
     if current.drag_indicator.is_none() {
         if let Some(document) = current.root.owner_document() {
             if let (Ok(element), Some(body)) = (document.create_element("div"), document.body()) {
                 element.set_class_name("dx-block-drop-indicator");
+                let _ = element.set_attribute("aria-hidden", "true");
                 let _ = body.append_child(&element);
                 current.drag_indicator = Some(element);
             }
         }
     }
     if let Some(indicator) = &current.drag_indicator {
-        let _ = indicator.set_attribute("style", &format!("position:fixed;pointer-events:none;z-index:10000;left:{x}px;top:{y}px;width:{width}px;height:2px;background:var(--accent,#5684e9)"));
+        let _ = indicator.set_attribute(
+            "style",
+            &format!("left:{x}px;top:{y}px;width:{}px", width.max(0.0)),
+        );
     }
 }
 fn autoscroll(y: f64) {

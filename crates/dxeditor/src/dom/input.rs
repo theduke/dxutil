@@ -299,6 +299,7 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         let current = {
             let h = host.borrow();
             if h.composing.is_some()
+                || !h.drag_uids.is_empty()
                 || h.root
                     .class_list()
                     .contains("dxeditor-engine--hide-selection")
@@ -586,6 +587,9 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         }
     })?;
     DomHost::listen(host, root.as_ref(), "pointermove", false, |host, event| {
+        if !host.borrow().drag_uids.is_empty() {
+            return;
+        }
         let anchor = host.borrow().cell_drag.clone();
         if event
             .dyn_ref::<web_sys::MouseEvent>()
@@ -620,6 +624,9 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         "pointerleave",
         false,
         |host, _| {
+            if !host.borrow().drag_uids.is_empty() {
+                return;
+            }
             let output = host.borrow().engine.borrow_mut().set_hover_block(None);
             DomHost::publish(host, output);
         },
