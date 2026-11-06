@@ -304,7 +304,15 @@ pub fn TerminalView(
     #[cfg(feature = "native")]
     let probe_attributes: Vec<Attribute> = Vec::new();
     let onmousedown = move |event: MouseEvent| {
-        if let Some(target) = focus_target.peek().clone().or_else(|| host.peek().clone()) {
+        if let Some(target) = focus_target.peek().clone() {
+            // The browser would otherwise focus the tabindex=-1 host after this
+            // handler, stealing focus from the input surface: paste and IME
+            // events then never reach it.
+            event.prevent_default();
+            spawn(async move {
+                let _ = target.set_focus(true).await;
+            });
+        } else if let Some(target) = host.peek().clone() {
             spawn(async move {
                 let _ = target.set_focus(true).await;
             });

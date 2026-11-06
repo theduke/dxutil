@@ -188,7 +188,8 @@ fn use_global_keydown_listener(key: &'static str, on_escape: impl FnMut() + Clon
         let mut escape = document::eval(
             "let targetKey = await dioxus.recv();
             function listener(event) {
-                if (event.key === targetKey) {
+                // A focused widget (e.g. a terminal) that consumed the key keeps it.
+                if (event.key === targetKey && !event.defaultPrevented) {
                     event.preventDefault();
                     dioxus.send(true);
                 }

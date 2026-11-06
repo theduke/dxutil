@@ -2895,37 +2895,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
-name = "dxhighlight"
-version = "0.0.1"
-dependencies = [
- "arborium-bash",
- "arborium-c",
- "arborium-cpp",
- "arborium-css",
- "arborium-go",
- "arborium-html",
- "arborium-javascript",
- "arborium-json",
- "arborium-python",
- "arborium-rust",
- "arborium-sql",
- "arborium-toml",
- "arborium-tsx",
- "arborium-typescript",
- "arborium-yaml",
- "dioxus",
- "dioxus-ssr",
- "futures",
- "gloo-timers 0.3.0",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "tree-sitter",
- "tree-sitter-md",
- "wasm-bindgen-test",
-]
-
-[[package]]
 name = "dxcomp"
 version = "0.0.1"
 dependencies = [
@@ -3029,15 +2998,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "dxhighlight"
+version = "0.0.1"
+dependencies = [
+ "arborium-bash",
+ "arborium-c",
+ "arborium-cpp",
+ "arborium-css",
+ "arborium-go",
+ "arborium-html",
+ "arborium-javascript",
+ "arborium-json",
+ "arborium-python",
+ "arborium-rust",
+ "arborium-sql",
+ "arborium-toml",
+ "arborium-tsx",
+ "arborium-typescript",
+ "arborium-yaml",
+ "dioxus",
+ "dioxus-ssr",
+ "futures",
+ "gloo-timers 0.3.0",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "tree-sitter",
+ "tree-sitter-md",
+ "wasm-bindgen-test",
+]
+
+[[package]]
 name = "dxplayground"
 version = "0.0.1"
 dependencies = [
  "dioxus",
- "dxhighlight",
  "dxcomp",
  "dxeditor",
  "dxform",
  "dxgraph",
+ "dxhighlight",
  "dxterm",
  "serde_json",
 ]
