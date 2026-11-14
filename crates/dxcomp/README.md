@@ -106,6 +106,11 @@ are suppressed while disabled or read-only. Native renderer focus/blur support
 has the same limitations as the bound controls below. The existing root `Input`
 and `Textarea` APIs remain unchanged and do not automatically consume context.
 
+Dioxus 0.7 exposes `spellcheck` through both its global and input attribute
+extensions. On component wrappers (including the original `Input`), use the
+quoted attribute syntax `"spellcheck": "false"` to avoid ambiguous builder
+methods. This still forwards the normal HTML attribute to the native control.
+
 ```rust
 use dioxus::prelude::*;
 use dxcomp::{ActionButton, CopyButton, CopyRequest, form};
