@@ -65,7 +65,7 @@ No features are enabled by default. Choose the feature matching your renderer:
 ## Form fields
 
 `dxcomp::form` is always available. `Field`, `FieldLabel`, `FieldDescription`,
-`FieldErrorList`, `PasswordInput`, and `SubmitButton` work with application-owned
+`FieldErrorList`, `TextInput`, `form::Textarea`, `PasswordInput`, and `SubmitButton` work with application-owned
 signals and do not require dxform. Render `Stylesheet` once for their styles.
 
 ```rust
@@ -95,6 +95,48 @@ set `labelling: FieldLabelling::Native`, and render `FieldLabel` in children.
 sets `aria-busy`. Its spinner is decorative; keep any application status
 announcement in a separate live region. Password visibility is uncontrolled by
 default; `visible` and `on_visible_change` support controlled visibility.
+
+### Manual text controls and actions
+
+`form::TextInput` and `form::Textarea` accept `value: String` and an `oninput`
+handler. They consume the nearest `Field` context to apply control IDs, labels,
+descriptions, visible errors, and native disabled/required/read-only flags.
+They preserve your draft and do not parse or validate it. Input/change callbacks
+are suppressed while disabled or read-only. Native renderer focus/blur support
+has the same limitations as the bound controls below. The existing root `Input`
+and `Textarea` APIs remain unchanged and do not automatically consume context.
+
+```rust
+use dioxus::prelude::*;
+use dxcomp::{ActionButton, CopyButton, CopyRequest, form};
+
+#[component]
+fn Note(on_copy: EventHandler<CopyRequest>) -> Element {
+    let mut title = use_signal(String::new);
+    rsx! {
+        form::Field { id: "note-title", label: "Title", description: "A descriptive title.",
+            form::TextInput { value: title(), oninput: move |event: FormEvent| title.set(event.value()) }
+        }
+        ActionButton { pending: false, pending_label: "Saving…", "Save" }
+        CopyButton { value: title(), label: "Copy title", show_label: true, on_copy }
+    }
+}
+```
+
+`ActionButton` shares pending presentation with `form::SubmitButton` but defaults
+to `type="button"`. Both take application-owned pending state and disable while
+pending; they do not start or cancel operations. Explicit HTML button attributes
+can select a different button type. Their spinner is decorative.
+
+`CopyButton` always uses `type="button"`. Its injected `on_copy` receives a
+`CopyRequest`: read `value()` and eventually call `complete(Result<(), String>)`.
+There is no clipboard JS or platform dependency. Pending copies cannot be
+started twice. Changing the value clears feedback and invalidates older results,
+including when the value changes away and back. A retained request from the
+button is ignored after unmount. Success and progress use a polite live region;
+failure also displays a concise manual-copy hint. Keep the source text selectable
+beside the button for that fallback. Platform error details are not displayed.
+Extended attributes, including class, apply to the button.
 
 ### Typed dxform binding
 

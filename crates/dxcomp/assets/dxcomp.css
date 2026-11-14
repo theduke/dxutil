@@ -6017,3 +6017,9 @@ a.dx-item:hover {
 .dx-native-checkbox {
   accent-color: var(--secondary-color-4);
 }
+
+/* Copy feedback is visible on failure; other outcomes remain available to AT. */
+.dx-copy-feedback:not(.dx-sr-only) {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}

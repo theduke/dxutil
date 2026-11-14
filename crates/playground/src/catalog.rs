@@ -28,6 +28,15 @@ pub const STORIES: &[Story] = &[
         notes: "Button extends HTML button attributes. Set type=button inside forms unless the action should submit.",
     },
     Story {
+        id: "actions-fields",
+        group: "dxcomp",
+        category: "Controls",
+        title: "Fields & async actions",
+        description: "Accessible manual fields and controlled pending and copy feedback.",
+        instructions: "Edit the title and notes. Toggle field states, save and finish saving, or copy and explicitly complete or fail the request. Change the title while copying to test obsolete completions.",
+        notes: "TextInput and form::Textarea consume Field context without dxform. ActionButton defaults to type=button. CopyButton receives a platform-provided callback and announces only the current value’s outcome.",
+    },
+    Story {
         id: "inputs",
         group: "dxcomp",
         category: "Controls",

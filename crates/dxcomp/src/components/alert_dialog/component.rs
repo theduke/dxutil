@@ -3,17 +3,21 @@ use dioxus_primitives::alert_dialog::{
     self, AlertDialogActionProps, AlertDialogActionsProps, AlertDialogCancelProps,
     AlertDialogDescriptionProps, AlertDialogRootProps, AlertDialogTitleProps,
 };
+use dioxus_primitives::{dioxus_attributes::attributes, merge_attributes};
 
 #[component]
 pub fn AlertDialog(props: AlertDialogRootProps) -> Element {
+    let base = attributes!(div {
+        class: "dx-alert-dialog-backdrop"
+    });
+    let attributes = merge_attributes(vec![base, props.attributes]);
     rsx! {
         alert_dialog::AlertDialogRoot {
-            class: "dx-alert-dialog-backdrop",
             id: props.id,
             default_open: props.default_open,
             open: props.open,
             on_open_change: props.on_open_change,
-            attributes: props.attributes,
+            attributes,
             alert_dialog::AlertDialogContent {
                 class: "dx-alert-dialog".to_string(),
                 {props.children}

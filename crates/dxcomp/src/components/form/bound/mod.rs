@@ -16,7 +16,7 @@ use dioxus::prelude::*;
 use dxform::{FieldHandle, FormError};
 
 use super::FieldControl;
-use super::attrs::{CallerControlAttrs, attr};
+use super::attrs::{CallerControlAttrs, native_attributes};
 use super::context::use_control;
 
 fn use_bound_control<V, R, D>(
@@ -40,21 +40,6 @@ where
         caller.name = Some(field.path().to_string());
     }
     (control, caller)
-}
-
-fn native_attributes(control: &FieldControl, caller: CallerControlAttrs) -> Vec<Attribute> {
-    let mut attributes = control.aria_attributes();
-    if let Some(name) = caller.name {
-        attributes.push(attr("name", name));
-    }
-    attributes.push(attr("disabled", control.disabled));
-    attributes.push(attr("required", control.required));
-    attributes.push(attr("readonly", control.read_only));
-    // Controlled values belong to the binding, even when supplied through extended attributes.
-    attributes.extend(caller.rest.into_iter().filter(|attribute| {
-        attribute.namespace.is_some() || !matches!(attribute.name, "value" | "checked")
-    }));
-    attributes
 }
 
 fn error_message(error: FormError, formatter: Option<Callback<FormError, String>>) -> String {

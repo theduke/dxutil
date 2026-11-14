@@ -1,3 +1,4 @@
+mod actions_fields;
 mod code;
 mod components;
 mod editor;
@@ -11,6 +12,7 @@ use dioxus::prelude::*;
 
 pub fn render(id: &str) -> Element {
     match id {
+        "actions-fields" => rsx! { actions_fields::ActionsFields {} },
         "inputs" => rsx! { components::Inputs {} },
         "dialog" => rsx! { components::DialogStory {} },
         "spinners" => rsx! { spinner::Spinners {} },
@@ -28,6 +30,7 @@ pub fn render(id: &str) -> Element {
 
 pub fn source(id: &str) -> &'static str {
     match id {
+        "actions-fields" => include_str!("actions_fields.rs"),
         "markdown" | "composer" => include_str!("editor.rs"),
         "graph" => include_str!("graph.rs"),
         "spinners" => include_str!("spinner.rs"),

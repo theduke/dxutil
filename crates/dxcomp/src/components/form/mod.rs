@@ -43,12 +43,13 @@
 //! validation results can race; avoid overlapping async runs when ordering matters.
 //! Native has input events but no focus/blur, select widget, or Dioxus submit event.
 //! Use `FormSubmitButton` with `submit_on_click` there, and explicit IDs for hydration.
-mod attrs;
+pub(crate) mod attrs;
 mod context;
 mod field;
 mod ids;
 mod password;
 mod submit;
+mod text;
 
 pub use attrs::merge_idrefs;
 pub use context::*;
@@ -56,6 +57,7 @@ pub use field::*;
 pub use ids::*;
 pub use password::*;
 pub use submit::*;
+pub use text::*;
 
 #[cfg(feature = "dxform")]
 mod bound;

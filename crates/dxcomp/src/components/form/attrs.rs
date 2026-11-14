@@ -74,3 +74,21 @@ pub(crate) fn take_control_attrs(attributes: Vec<Attribute>) -> CallerControlAtt
 pub(crate) fn attr(name: &'static str, value: impl IntoAttributeValue) -> Attribute {
     Attribute::new(name, value, None, false)
 }
+
+/// Native controls share field context and reserve their controlled value attributes.
+pub(crate) fn native_attributes(
+    control: &super::FieldControl,
+    caller: CallerControlAttrs,
+) -> Vec<Attribute> {
+    let mut attributes = control.aria_attributes();
+    if let Some(name) = caller.name {
+        attributes.push(attr("name", name));
+    }
+    attributes.push(attr("disabled", control.disabled));
+    attributes.push(attr("required", control.required));
+    attributes.push(attr("readonly", control.read_only));
+    attributes.extend(caller.rest.into_iter().filter(|attribute| {
+        attribute.namespace.is_some() || !matches!(attribute.name, "value" | "checked")
+    }));
+    attributes
+}

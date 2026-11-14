@@ -176,6 +176,51 @@ fn pending_submit_uses_shared_spinner_and_pending_label() {
     assert!(html.contains("Saving"));
 }
 
+#[test]
+fn manual_text_controls_resolve_context_and_preserve_caller_overrides() {
+    fn app() -> Element {
+        rsx! {
+            Field { id: "manual-input", label: "Title", description: "A title", errors: vec!["Invalid".to_owned()],
+                disabled: true, required: true,
+                TextInput { value: "kept draft", oninput: |_| {}, aria_describedby: "extra manual-input-description" }
+            }
+            Field { id: "manual-textarea", label: "Notes", description: "Your notes", read_only: true,
+                Textarea { value: "kept notes", oninput: |_| {}, aria_invalid: "false", rows: "3" }
+            }
+        }
+    }
+    let html = render(app);
+    let input = html
+        .split("<input")
+        .nth(1)
+        .unwrap()
+        .split('>')
+        .next()
+        .unwrap();
+    assert!(html.contains("for=\"manual-input\""));
+    assert!(input.contains("id=\"manual-input\""));
+    assert!(
+        input.contains("aria-describedby=\"manual-input-description manual-input-errors extra\"")
+    );
+    assert!(input.contains("aria-invalid=\"true\""));
+    assert!(input.contains("disabled"));
+    assert!(input.contains("required"));
+    assert!(input.contains("value=\"kept draft\""));
+    let textarea = html
+        .split("<textarea")
+        .nth(1)
+        .unwrap()
+        .split('>')
+        .next()
+        .unwrap();
+    assert!(html.contains("for=\"manual-textarea\""));
+    assert!(textarea.contains("id=\"manual-textarea\""));
+    assert!(textarea.contains("aria-describedby=\"manual-textarea-description\""));
+    assert!(textarea.contains("readonly"));
+    assert!(!textarea.contains("aria-invalid=\"true\""));
+    assert!(html.contains("kept notes"));
+}
+
 #[cfg(feature = "dxform")]
 mod bound {
     use super::*;
@@ -495,7 +540,7 @@ fn context_updates_reach_controls_with_unchanged_props() {
             has_errors: invalid(),
             ..FieldState::new(FieldIds::new("reactive"))
         };
-        rsx! { FieldProvider { state, CustomControl {} } }
+        rsx! { FieldProvider { state, TextInput { value: "unchanged", oninput: |_| {} } } }
     }
     let mut dom = VirtualDom::new(app);
     dom.rebuild_in_place();
