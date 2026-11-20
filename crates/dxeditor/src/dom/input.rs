@@ -496,10 +496,11 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             }
             return;
         }
-        if target.tag_name() == "IMG" {
+        if target.tag_name() == "IMG" || target.class_list().contains("dx-doc-image-upload") {
             if let Some(block) = target.closest(".dx-block[data-uid]").ok().flatten() {
                 if let Some(uid) = block.get_attribute("data-uid") {
                     DomHost::run(host, Command::SelectNode(uid.clone()));
+                    DomHost::run(host, Command::Focus);
                     // While editing, a click selects the image for its toolbar;
                     // a double click (or any click when reading) opens it.
                     if host.borrow().engine.borrow().read_only() {
