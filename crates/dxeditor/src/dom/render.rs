@@ -30,6 +30,10 @@ fn attrs(el: &Element, node: &ComponentNode) -> Result<(), JsValue> {
             if let Some(v) = value.as_str() {
                 el.set_attribute(&format!("data-{}", key.replace('_', "-")), v)?;
             }
+        } else if key == "icon" && node.kind.0 == "callout" {
+            if let Some(icon) = value.as_str().filter(|icon| !icon.is_empty()) {
+                el.set_attribute("data-icon", icon)?;
+            }
         }
     }
     Ok(())
@@ -157,7 +161,12 @@ impl Renderer {
                 .unwrap_or_default();
             if kind == "numbered_list_item" {
                 let start = block.content[0].attrs.get("start").and_then(|v| v.as_u64());
-                number = start.unwrap_or(if previous_numbered { number + 1 } else { 1 });
+                // As in Markdown, only the first item of a run sets its start.
+                number = if previous_numbered {
+                    number + 1
+                } else {
+                    start.unwrap_or(1)
+                };
                 el.set_attribute("data-list", "numbered")?;
                 el.set_attribute("data-number", &format!("{number}."))?;
             } else if kind == "bulleted_list_item" {
@@ -235,6 +244,39 @@ impl Renderer {
         }
         // The common typing case patches CharacterData and keeps selection/text node identity.
         if let (Some(old), Some(existing)) = (old, existing.as_ref()) {
+            if old.kind.0 == "code_block"
+                && content.kind == old.kind
+                && content.content == old.content
+                && old
+                    .attrs
+                    .iter()
+                    .filter(|(key, _)| *key != "language")
+                    .eq(content.attrs.iter().filter(|(key, _)| *key != "language"))
+            {
+                let language = content
+                    .attrs
+                    .get("language")
+                    .and_then(|value| value.as_str());
+                if let Some(select) = existing
+                    .query_selector("select[data-code-language]")?
+                    .and_then(|element| element.dyn_into::<web_sys::HtmlSelectElement>().ok())
+                    && let Some(code) = existing.query_selector("code")?
+                    && (language.is_none()
+                        || CODE_LANGUAGES
+                            .iter()
+                            .any(|(value, _)| Some(*value) == language)
+                        || select.value() == language.unwrap_or_default())
+                {
+                    if let Some(language) = language {
+                        code.set_attribute("data-language", language)?;
+                    } else {
+                        code.remove_attribute("data-language")?;
+                    }
+                    select.set_value(language.unwrap_or_default());
+                    self.cache.insert(uid, content.clone());
+                    return Ok(());
+                }
+            }
             if old.kind == content.kind
                 && old.attrs == content.attrs
                 && old.content.len() == 1
@@ -305,6 +347,9 @@ impl Renderer {
                 }
             }
         }
+        if n.kind.0 != "todo" {
+            block.remove_attribute("data-checked")?;
+        }
         if n.kind.0 == "todo" {
             let checked = n
                 .attrs
@@ -334,7 +379,7 @@ impl Renderer {
                     "aria-expanded",
                     if e.is_collapsed(uid) { "false" } else { "true" },
                 )?;
-                button.set_text_content(Some(if e.is_collapsed(uid) { "▸" } else { "▾" }));
+                button.set_text_content(Some(if e.is_collapsed(uid) { "▶" } else { "▼" }));
             }
         }
         if let Some(container) = block.query_selector("[data-inline-container]")? {
@@ -346,13 +391,11 @@ impl Renderer {
                         n.attrs.get("level").and_then(|v| v.as_u64()).unwrap_or(1)
                     ),
                     "image" => "Write a caption…".into(),
-                    "paragraph" => {
-                        if e.profile() == crate::engine::Profile::Composer {
-                            "Message…".into()
-                        } else {
-                            "Type '/' for commands".into()
-                        }
-                    }
+                    "paragraph" => match e.profile() {
+                        crate::engine::Profile::Composer => "Message…".into(),
+                        crate::engine::Profile::GraphNode => "Add an idea…".into(),
+                        _ => "Type '/' for commands".into(),
+                    },
                     "todo" => "To-do".into(),
                     other => other.replace('_', " "),
                 };
@@ -391,6 +434,7 @@ impl Renderer {
                     let tr = element(doc, "tr", "")?;
                     let row_uid = row.id.as_ref().map(|i| i.0.as_str()).unwrap_or_default();
                     tr.set_attribute("data-uid", row_uid)?;
+                    tr.set_attribute("data-table-row-index", &ri.to_string())?;
                     for (ci, cell) in row.content.iter().enumerate() {
                         let header = (ri == 0
                             && n.attrs
@@ -412,6 +456,7 @@ impl Renderer {
                             "",
                         )?;
                         attrs(&td, cell)?;
+                        td.set_attribute("data-table-column-index", &ci.to_string())?;
                         if let Some(align) = cell.attrs.get("alignment").and_then(|v| v.as_str()) {
                             if matches!(align, "left" | "center" | "right") {
                                 td.set_attribute("style", &format!("text-align:{align}"))?;
@@ -438,6 +483,7 @@ impl Renderer {
                 attrs(&figure, n)?;
                 if let Some(w) = n.attrs.get("width").and_then(|v| v.as_f64()) {
                     figure.set_attribute("style", &format!("width:{}%", w.clamp(25., 100.)))?;
+                    figure.set_attribute("data-sized", "")?;
                 }
                 let img = element(doc, "img", "")?;
                 img.set_attribute("contenteditable", "false")?;
@@ -549,8 +595,14 @@ impl Renderer {
                     text
                 } else if kind == "code_block" {
                     let code = element(doc, "code", "")?;
-                    if let Some(lang) = n.attrs.get("language").and_then(|v| v.as_str()) {
+                    let language = n.attrs.get("language").and_then(|v| v.as_str());
+                    if let Some(lang) = language {
                         code.set_attribute("data-language", lang)?;
+                    }
+                    // The picker precedes the code, so the end of the block is
+                    // always the end of its text.
+                    if !e.read_only() {
+                        append(&outer, &language_picker(doc, uid, language)?)?;
                     }
                     append(&outer, &code)?;
                     code
@@ -570,6 +622,48 @@ impl Renderer {
         let _ = e;
         Ok(el)
     }
+}
+/// Languages offered for code blocks, as (value, label).
+const CODE_LANGUAGES: [(&str, &str); 18] = [
+    ("", "Plain text"),
+    ("bash", "Bash"),
+    ("c", "C"),
+    ("cpp", "C++"),
+    ("css", "CSS"),
+    ("go", "Go"),
+    ("html", "HTML"),
+    ("java", "Java"),
+    ("javascript", "JavaScript"),
+    ("json", "JSON"),
+    ("markdown", "Markdown"),
+    ("python", "Python"),
+    ("rust", "Rust"),
+    ("sql", "SQL"),
+    ("toml", "TOML"),
+    ("typescript", "TypeScript"),
+    ("xml", "XML"),
+    ("yaml", "YAML"),
+];
+/// The language label of a code block: a native select outside the editable
+/// code, so choosing a language never touches the text.
+fn language_picker(doc: &Document, uid: &str, current: Option<&str>) -> Result<Element, JsValue> {
+    let select = element(doc, "select", "dx-code-language")?;
+    select.set_attribute("contenteditable", "false")?;
+    select.set_attribute("data-code-language", uid)?;
+    select.set_attribute("aria-label", "Code language")?;
+    let current = current.unwrap_or_default();
+    let known = CODE_LANGUAGES.iter().any(|(value, _)| *value == current);
+    let custom = (!known).then_some((current, current));
+    for (value, label) in CODE_LANGUAGES.iter().copied().chain(custom) {
+        let option = element(doc, "option", "")?;
+        option.set_attribute("value", value)?;
+        option.set_text_content(Some(label));
+        if value == current {
+            option.set_attribute("selected", "")?;
+        }
+        append(&select, &option)?;
+    }
+    Ok(select)
 }
 fn single_text(node: &Node) -> Option<Node> {
     fn collect(node: &Node, found: &mut Option<Node>) -> bool {

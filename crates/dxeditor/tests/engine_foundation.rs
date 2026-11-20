@@ -220,6 +220,7 @@ fn input_rule_corpus() {
         ("[x] ", "todo"),
         ("[X] ", "todo"),
         ("> ", "quote"),
+        ("```", "code_block"),
         ("```rust ", "code_block"),
         ("---", "divider"),
     ] {
@@ -229,6 +230,102 @@ fn input_rule_corpus() {
     assert_eq!(
         input_rules::block_rule("```c++", true).unwrap().0,
         "code_block"
+    );
+}
+#[test]
+fn numbered_lists_start_once_and_continue_across_enter() {
+    for (typed, start) in [("1. ", None), ("3. ", Some(3))] {
+        let mut e = engine("");
+        type_text(&mut e, typed);
+        type_text(&mut e, "one");
+        e.run(Command::SplitBlock);
+        let order = model::block_order(e.document());
+        let starts: Vec<_> = order
+            .iter()
+            .map(|uid| {
+                let content = model::content(e.document(), uid).unwrap();
+                assert_eq!(content.kind.0, "numbered_list_item");
+                content
+                    .attrs
+                    .get("start")
+                    .and_then(serde_json::Value::as_u64)
+            })
+            .collect();
+        assert_eq!(starts, vec![start, None], "{typed}");
+    }
+}
+#[test]
+fn closed_inline_marks_and_link_ends_do_not_carry_into_typing() {
+    let marked = |e: &EditorEngine, wanted: &str| -> String {
+        model::inline(e.document(), &InlineContainerRef::Block(uid(e)))
+            .unwrap()
+            .iter()
+            .filter(|node| node.marks.iter().any(|mark| mark.kind.0 == wanted))
+            .map(|node| node.text.clone().unwrap_or_default())
+            .collect()
+    };
+    for (typed, mark) in [
+        ("A **bold**", "bold"),
+        ("A `code`", "code"),
+        ("A ~~gone~~", "strike"),
+    ] {
+        let mut e = engine("");
+        for ch in typed.chars() {
+            type_text(&mut e, &ch.to_string());
+        }
+        type_text(&mut e, " after");
+        assert_eq!(
+            marked(&e, mark),
+            typed.trim_start_matches("A ").trim_matches(['*', '`', '~']),
+            "{typed}"
+        );
+    }
+    let mut e = engine("docs");
+    let id = uid(&e);
+    e.run(Command::SetSelection(EditorSelection::Text(
+        dxeditor::engine::TextRange {
+            anchor: dxeditor::engine::TextPoint::new(InlineContainerRef::Block(id.clone()), 0),
+            head: dxeditor::engine::TextPoint::new(InlineContainerRef::Block(id.clone()), 4),
+        },
+    )));
+    let mut link = dxeditor::ComponentMark::new("link");
+    link.attrs
+        .insert("href".into(), serde_json::json!("https://docs.rs"));
+    e.run(Command::SetMark(link));
+    e.run(Command::SetSelection(EditorSelection::caret(
+        InlineContainerRef::Block(id.clone()),
+        4,
+    )));
+    type_text(&mut e, "X");
+    assert_eq!(marked(&e, "link"), "docs");
+    e.run(Command::SetSelection(EditorSelection::caret(
+        InlineContainerRef::Block(id),
+        2,
+    )));
+    type_text(&mut e, "Y");
+    assert_eq!(marked(&e, "link"), "doYcs");
+}
+#[test]
+fn arrow_down_leaves_a_trailing_quote() {
+    let mut block = model::block_node(ComponentNode::new("quote"));
+    block.content[0].content = vec![ComponentNode::text("q")];
+    let id = block.id.as_ref().unwrap().0.clone();
+    let mut e = EditorEngine::new(
+        model::document(vec![block]),
+        &EditorCatalog::block_document(),
+        Profile::BlockDocument,
+        EngineOptions::default(),
+    )
+    .unwrap();
+    e.run(Command::SetSelection(EditorSelection::caret(
+        InlineContainerRef::Block(id),
+        1,
+    )));
+    assert_eq!(
+        dxeditor::engine::keymap::resolve(&e, &KeyChord::new("ArrowDown")),
+        Some(dxeditor::engine::keymap::KeyAction::Command(
+            Command::ExitTrailingQuote
+        ))
     );
 }
 #[test]
@@ -525,6 +622,50 @@ fn host_picker_tracks_original_uid_when_other_blocks_inserted() {
     assert!(output.is_empty());
 }
 #[test]
+fn picked_embed_leaves_the_caret_below_it() {
+    let mut e = engine("");
+    let id = uid(&e);
+    e.run(Command::SetSelection(EditorSelection::caret(
+        InlineContainerRef::Block(id),
+        0,
+    )));
+    e.request_entity_picker("embed".into());
+    let generation = e.suggestion().generation;
+    e.set_suggestion_items(
+        generation,
+        vec![dxeditor::SuggestionItem {
+            id: "ada".into(),
+            label: "Ada".into(),
+            description: None,
+            icon: None,
+            data: serde_json::json!({"entity":{"id":"ada","label":"Ada"}}),
+            priority: 0,
+        }],
+    );
+    e.run(Command::AcceptSuggestion);
+    let order = model::block_order(e.document());
+    assert_eq!(
+        model::content(e.document(), &order[0]).unwrap().kind.0,
+        "entity_embed"
+    );
+    assert_eq!(
+        e.selection(),
+        &EditorSelection::caret(InlineContainerRef::Block(order[1].clone()), 0)
+    );
+    type_text(&mut e, "x");
+    assert_eq!(
+        model::content(e.document(), &order[0]).unwrap().kind.0,
+        "entity_embed"
+    );
+    e.run(Command::Undo);
+    e.run(Command::Undo);
+    assert_eq!(
+        model::block_order(e.document()).len(),
+        1,
+        "one undo step per action"
+    );
+}
+#[test]
 fn inline_entity_picker_preserves_selected_text_for_link_mode() {
     let mut e = engine("Ada Lovelace");
     let id = uid(&e);
@@ -712,6 +853,52 @@ fn slash_selection_replacement_is_one_history_entry() {
     );
     e.run(Command::Undo);
     assert_eq!(e.document(), &original);
+}
+#[test]
+fn slash_divider_continues_writing_below_and_details_stay_in_graph_nodes() {
+    let mut e = engine("");
+    type_text(&mut e, "/");
+    assert!(
+        !e.suggestion()
+            .items
+            .iter()
+            .any(|item| item.id == "details_break"),
+        "documents cannot hold details markers"
+    );
+    type_text(&mut e, "divider");
+    let item = e
+        .suggestion()
+        .items
+        .iter()
+        .position(|item| item.id == "divider")
+        .unwrap();
+    e.run(Command::SuggestionFirst);
+    e.run(Command::SuggestionNext(item as i32));
+    e.run(Command::AcceptSuggestion);
+    let order = model::block_order(e.document());
+    assert_eq!(
+        model::content(e.document(), &order[0]).unwrap().kind.0,
+        "divider"
+    );
+    assert_eq!(
+        e.selection(),
+        &EditorSelection::caret(InlineContainerRef::Block(order[1].clone()), 0)
+    );
+    type_text(&mut e, "abc");
+    assert_eq!(
+        model::content(e.document(), &order[0]).unwrap().kind.0,
+        "divider"
+    );
+}
+#[test]
+fn slash_menu_closes_once_typing_goes_past_any_match() {
+    let mut e = engine("");
+    type_text(&mut e, "/qz");
+    assert!(e.suggestion().active.is_some(), "no results is shown first");
+    assert!(e.suggestion().items.is_empty());
+    type_text(&mut e, "xw");
+    assert!(e.suggestion().active.is_none());
+    assert_eq!(plain(&e), "/qzxw");
 }
 #[test]
 fn disabled_composer_hint_does_not_swallow_submit_or_tab() {

@@ -132,8 +132,15 @@ pub fn run(e: &mut EditorEngine, cmd: Command) -> Vec<EngineOutput> {
             n.marks = e.stored_marks.clone();
             if !e.stored_marks_explicit {
                 if let Some((c, start, _)) = selected_text(e) {
-                    n.marks =
-                        text::marks_at(e.inline(&c).map(Vec::as_slice).unwrap_or_default(), start);
+                    let nodes = e.inline(&c).map(Vec::as_slice).unwrap_or_default();
+                    n.marks = text::marks_at(nodes, start);
+                    // Text typed at the end of a link does not join the link.
+                    let next = text::marks_at(nodes, start + 1);
+                    let at_end = start >= text::len(nodes);
+                    n.marks.retain(|mark| {
+                        !matches!(mark.kind.0.as_str(), "link" | "entity_link")
+                            || (!at_end && next.contains(mark))
+                    });
                 }
             }
             insert_inline(e, vec![n], TxKind::Typing)
@@ -279,6 +286,32 @@ pub fn insert_inline(
             kind,
         );
     }
+    // Overwrite the rectangle and continue in its upper-left cell.
+    if let EditorSelection::Cells {
+        table,
+        anchor,
+        head,
+    } = &e.selection
+    {
+        let (top, left) = (anchor.0.min(head.0), anchor.1.min(head.1));
+        let Some(row) = e
+            .content(table)
+            .and_then(|content| content.content.get(top))
+            .and_then(|row| row.id.as_ref())
+            .map(|id| id.0.clone())
+        else {
+            return vec![];
+        };
+        let container = InlineContainerRef::Cell { row, col: left };
+        return e.batch_commands(
+            vec![
+                Command::Table(super::TableCommand::Clear),
+                Command::SetSelection(EditorSelection::caret(container, 0)),
+                Command::InsertInline(nodes),
+            ],
+            kind,
+        );
+    }
     let uids = selected_uids(e);
     let Some(first) = uids.first() else {
         return vec![];
@@ -314,6 +347,10 @@ pub fn insert_inline(
     )
 }
 fn delete(e: &mut EditorEngine, direction: Direction, unit: DeleteUnit) -> Vec<EngineOutput> {
+    // Deleting selected cells clears their contents; the table stays.
+    if matches!(e.selection, EditorSelection::Cells { .. }) {
+        return run(e, Command::Table(super::TableCommand::Clear));
+    }
     if let DeleteUnit::TargetRange(range) = unit {
         e.selection = EditorSelection::Text(range);
         return delete(e, direction, DeleteUnit::Selection);
@@ -566,6 +603,10 @@ fn split_block(e: &mut EditorEngine) -> Vec<EngineOutput> {
     if matches!(c, InlineContainerRef::Cell { .. }) {
         return run(e, Command::HardBreak);
     }
+    // Enter in an image caption continues below the image.
+    if let InlineContainerRef::Caption(uid) = c {
+        return focus_after(e, uid);
+    }
     let Some(uid) = current_uid(e) else {
         return vec![];
     };
@@ -593,6 +634,55 @@ fn split_block(e: &mut EditorEngine) -> Vec<EngineOutput> {
         }
         return turn_into(e, "paragraph", AttributeMap::new());
     }
+    // Enter at the start of a block opens an empty block above it; the block
+    // keeps its type, attributes and text.
+    if start == 0 && !before.content.is_empty() {
+        let Some((parent, index)) = e.location(&uid) else {
+            return vec![];
+        };
+        let mut above = ComponentNode::new(before.kind.0.clone());
+        above.attrs = before.attrs.clone();
+        let mut ops = Vec::new();
+        if matches!(
+            above.kind.0.as_str(),
+            "bulleted_list_item" | "numbered_list_item" | "todo"
+        ) {
+            if above.kind.0 == "todo" {
+                above.attrs.insert("checked".into(), false.into());
+            }
+            // A list's start number moves to its new first item.
+            if before.attrs.contains_key("start") {
+                let mut after = before.clone();
+                after.attrs.remove("start");
+                ops.push(Op::SetContent {
+                    uid: uid.clone(),
+                    before: before.clone(),
+                    after,
+                });
+            }
+        } else {
+            above = ComponentNode::new("paragraph");
+        }
+        ops.push(Op::InsertBlocks {
+            parent,
+            index,
+            blocks: vec![model::block_node(above)],
+        });
+        return tx(
+            e,
+            ops,
+            EditorSelection::caret(InlineContainerRef::Block(uid), 0),
+            TxKind::Structural,
+        );
+    }
+    // An empty nested paragraph steps out of its parent, ending the nesting.
+    if before.content.is_empty()
+        && before.kind.0 == "paragraph"
+        && e.location(&uid).is_some_and(|(p, _)| p.is_some())
+        && !model::children(&e.doc, Some(&uid)).is_some_and(|c| !c.is_empty())
+    {
+        return reparent(e, false);
+    }
     let (head, tail) = text::split(&before.content, start);
     let mut after = before.clone();
     after.content = head;
@@ -608,6 +698,8 @@ fn split_block(e: &mut EditorEngine) -> Vec<EngineOutput> {
     if next.kind.0 == "todo" {
         next.attrs.insert("checked".into(), false.into());
     }
+    // The new item continues the list rather than restarting its numbering.
+    next.attrs.remove("start");
     let next = model::block_node(next);
     let next_uid = next.id.as_ref().unwrap().0.clone();
     let Some((mut parent, mut index)) = e.location(&uid) else {
@@ -834,12 +926,58 @@ fn delete_blocks(e: &mut EditorEngine) -> Vec<EngineOutput> {
             });
         }
     }
-    let order = model::block_order(&e.doc);
-    let next = order.iter().find(|u| !uids.contains(u)).cloned();
-    let selection = next
-        .map(|uid| EditorSelection::caret(InlineContainerRef::Block(uid), 0))
-        .unwrap_or_else(|| e.selection.clone());
+    let selection = caret_beside(e, &uids).unwrap_or_else(|| e.selection.clone());
     tx(e, ops, selection, TxKind::Structural)
+}
+/// Where writing continues once blocks `removed` (and their children) are
+/// gone: the end of the nearest visible text block before them, else the
+/// start of the next visible block.
+pub(crate) fn caret_beside(e: &EditorEngine, removed: &[Uid]) -> Option<EditorSelection> {
+    let order = &e.index.order;
+    fn collect<'a>(node: &'a ComponentNode, uids: &mut std::collections::BTreeSet<&'a str>) {
+        if node.kind.0 == "block"
+            && let Some(id) = &node.id
+        {
+            uids.insert(id.0.as_str());
+        }
+        for child in &node.content {
+            collect(child, uids);
+        }
+    }
+    let mut gone = std::collections::BTreeSet::new();
+    for block in removed.iter().filter_map(|root| e.block(root)) {
+        collect(block, &mut gone);
+    }
+    // Blocks inside a collapsed toggle are hidden.
+    let visible = |uid: &Uid| {
+        let mut current = e.location(uid).and_then(|(parent, _)| parent);
+        while let Some(parent) = current {
+            if e.is_collapsed(&parent) {
+                return false;
+            }
+            current = e.location(&parent).and_then(|(parent, _)| parent);
+        }
+        true
+    };
+    let first = order.iter().position(|uid| gone.contains(uid.as_str()))?;
+    let last = order.iter().rposition(|uid| gone.contains(uid.as_str()))?;
+    let text = |uid: &Uid| {
+        e.content(uid)
+            .is_some_and(|content| model::is_text_kind(&content.kind.0))
+    };
+    if let Some(previous) = order[..first]
+        .iter()
+        .rev()
+        .find(|uid| text(uid) && visible(uid))
+    {
+        let container = InlineContainerRef::Block(previous.clone());
+        let length = e.inline(&container).map_or(0, |nodes| text::len(nodes));
+        return Some(EditorSelection::caret(container, length));
+    }
+    order[last + 1..]
+        .iter()
+        .find(|uid| text(uid) && visible(uid))
+        .map(|next| EditorSelection::caret(InlineContainerRef::Block(next.clone()), 0))
 }
 /// Structural selections are planned against a temporary tree and committed once.
 fn plan_op(doc: &mut crate::ComponentDocumentV2, ops: &mut Vec<Op>, op: Op) -> bool {
@@ -999,6 +1137,8 @@ pub fn insert_blocks(
         let Some((p, i)) = e.location(&uid) else {
             return vec![];
         };
+        // An empty paragraph (where the slash menu or a paste started) is
+        // replaced rather than left behind.
         let empty = selection
             && e.content(&uid)
                 .is_some_and(|c| c.kind.0 == "paragraph" && c.content.is_empty())
@@ -1214,24 +1354,27 @@ fn edit_selected(e: &mut EditorEngine) -> Vec<EngineOutput> {
     }
 }
 fn focus_after(e: &mut EditorEngine, uid: Uid) -> Vec<EngineOutput> {
-    let order = model::block_order(&e.doc);
-    if let Some(next) = order
-        .iter()
-        .position(|x| x == &uid)
-        .and_then(|i| order.get(i + 1))
+    let Some((parent, index)) = e.location(&uid) else {
+        return vec![];
+    };
+    if let Some(next) = model::children(&e.doc, parent.as_deref())
+        .and_then(|siblings| siblings.get(index + 1))
+        .filter(|block| {
+            block
+                .content
+                .first()
+                .is_some_and(|content| model::is_text_kind(&content.kind.0))
+        })
+        .and_then(|block| block.id.as_ref())
     {
-        if let Some(content) = e.content(next) {
-            if model::is_text_kind(&content.kind.0) {
-                let mut out = select(
-                    e,
-                    EditorSelection::caret(InlineContainerRef::Block(next.clone()), 0),
-                );
-                out.push(EngineOutput::Focus {
-                    target: FocusTarget::Editor,
-                });
-                return out;
-            }
-        }
+        let mut out = select(
+            e,
+            EditorSelection::caret(InlineContainerRef::Block(next.0.clone()), 0),
+        );
+        out.push(EngineOutput::Focus {
+            target: FocusTarget::Editor,
+        });
+        return out;
     }
     let mut out = insert_blocks(e, InsertAt::AfterBlock { uid }, vec![model::paragraph()]);
     out.extend(edit_selected(e));

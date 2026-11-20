@@ -211,6 +211,10 @@ impl ComponentEditorHandle {
     pub fn focus(&self) {
         self.run(Command::Focus);
     }
+    /// Dismiss the contextual menu and restore the editing position.
+    pub fn close_context_menu(&self) {
+        self.run(Command::CloseMenu);
+    }
     pub fn focus_after_block(&self, uid: String) {
         self.run(Command::FocusAfterBlock(uid));
     }

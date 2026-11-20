@@ -21,6 +21,31 @@ test('block duplicate refreshes identities and undo restores the original',async
   await expect(page.getByRole('button', { name: 'Block actions', exact: true })).toHaveCount(0);
 });
 
+test('block menus preserve text and the insert menu leaves no slash on cancel', async ({ page }) => {
+  await open(page);
+  await caret(page);
+  await page.keyboard.type('original');
+  await editor(page).locator('[data-content-kind=paragraph]').hover();
+  await page.getByRole('button', { name: 'Block actions', exact: true }).click();
+  const menu = page.getByRole('menu', { name: 'Block actions' });
+  await expect(menu.locator('summary').filter({ hasText: 'Turn into' })).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(menu.getByRole('menuitemradio', { name: 'Heading 1' })).toBeVisible();
+  await menu.getByRole('menuitemradio', { name: 'Heading 1' }).click();
+  await page.keyboard.type(' tail');
+  const heading = editor(page).getByRole('heading', { level: 1 });
+  await expect(heading).toHaveText('original tail');
+  await heading.hover();
+  await page.getByRole('button', { name: 'Insert block', exact: true }).click();
+  await expect(page.getByRole('listbox')).toBeVisible();
+  await page.keyboard.type('hea');
+  await expect(page.getByRole('option', { name: /Heading 1/ })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+  await page.keyboard.type('next');
+  await expect(editor(page).locator('[data-content-kind=paragraph]')).toHaveText('next');
+});
+
 test('plain table menu toggles both headers and edits explicit axes',async ({page})=>{
   await open(page,'/blocks?fixture=table'); await caret(page,editor(page).locator('td,th').first());
   await page.getByRole('button',{name:'Row 1 actions',exact:true}).click();

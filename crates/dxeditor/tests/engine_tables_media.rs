@@ -229,6 +229,87 @@ fn tab_navigates_without_history_and_adds_one_row_at_end() {
 }
 
 #[test]
+fn vertical_arrows_move_between_rows_and_leave_the_table() {
+    let (mut engine, uid) = table_engine(2, 2);
+    let rows: Vec<String> = table(&engine, &uid)
+        .content
+        .iter()
+        .map(|row| row.id.as_ref().unwrap().0.clone())
+        .collect();
+    let cell = |row: usize, col: usize| InlineContainerRef::Cell {
+        row: rows[row].clone(),
+        col,
+    };
+    let key = |engine: &mut EditorEngine, key: &str| {
+        engine.handle(dxeditor::engine::EngineInput::Key(
+            dxeditor::engine::KeyChord::new(key),
+        ));
+    };
+    engine.run(Command::SetSelection(EditorSelection::caret(cell(0, 1), 2)));
+    key(&mut engine, "ArrowDown");
+    assert_eq!(engine.selection(), &EditorSelection::caret(cell(1, 1), 2));
+    key(&mut engine, "ArrowUp");
+    assert_eq!(engine.selection(), &EditorSelection::caret(cell(0, 1), 2));
+    key(&mut engine, "ArrowDown");
+    key(&mut engine, "ArrowDown");
+    let after = model::block_order(engine.document())[1].clone();
+    assert_eq!(
+        engine.selection(),
+        &EditorSelection::caret(InlineContainerRef::Block(after), 0)
+    );
+}
+
+#[test]
+fn backspace_on_selected_cells_clears_them_and_keeps_the_table() {
+    let (mut engine, uid) = table_engine(2, 2);
+    engine.run(Command::SetSelection(EditorSelection::Cells {
+        table: uid.clone(),
+        anchor: (0, 0),
+        head: (0, 1),
+    }));
+    engine.handle(dxeditor::engine::EngineInput::Key(
+        dxeditor::engine::KeyChord::new("Backspace"),
+    ));
+    let grid = table(&engine, &uid);
+    assert_eq!(grid.content.len(), 2);
+    assert_eq!(grid.content[0].text_content().trim(), "");
+    assert_eq!(
+        grid.content[1]
+            .text_content()
+            .split_whitespace()
+            .collect::<Vec<_>>(),
+        ["1:0", "1:1"]
+    );
+    engine.handle(dxeditor::engine::EngineInput::InsertText { text: "X".into() });
+    let grid = table(&engine, &uid);
+    assert_eq!(grid.content.len(), 2, "typing keeps the table");
+    assert_eq!(grid.content[0].content[0].text_content(), "X");
+}
+
+#[test]
+fn deleting_the_table_moves_a_caret_out_of_its_cells() {
+    let (mut engine, uid) = table_engine(2, 2);
+    let row = table(&engine, &uid).content[0]
+        .id
+        .as_ref()
+        .unwrap()
+        .0
+        .clone();
+    engine.run(Command::SetSelection(EditorSelection::caret(
+        InlineContainerRef::Cell { row, col: 0 },
+        1,
+    )));
+    engine.run(Command::Table(TableCommand::Delete));
+    let selection = engine.selection().clone();
+    if let EditorSelection::Text(range) = selection {
+        assert!(!matches!(
+            range.head.container,
+            InlineContainerRef::Cell { .. }
+        ));
+    }
+}
+
+#[test]
 fn deleting_final_axis_removes_table_and_undo_restores_it() {
     let (mut engine, uid) = table_engine(1, 2);
     engine.run(Command::Table(TableCommand::DeleteAxis {

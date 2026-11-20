@@ -36,7 +36,7 @@ pub use component_spec::{
     ComponentCatalogError, ComponentKind, ComponentSpec, ContentRule, DomDescriptor,
     FORMAT_MARKDOWN, FORMAT_PLAIN_TEXT, FORMAT_TYPED_DOCUMENT, FormatCapability, IdentityPolicy,
     PlainTextFallback, UrlRole, is_safe_media_url, is_safe_url, is_safe_url_for_role,
-    register_standard_component_specs, validate_component_document,
+    normalize_link_url, register_standard_component_specs, validate_component_document,
 };
 pub use document::{
     BlockNode, EditorDocument, InlineNode, Mark, NodeContent, NodeId, TableCell, TableNode,

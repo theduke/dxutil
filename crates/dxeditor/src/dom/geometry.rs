@@ -31,7 +31,10 @@ fn visible_range_rect(range: &Range) -> Option<Rect> {
 
 /// Screen coordinates of the caret, including empty lines after hard breaks.
 pub(super) fn caret_rect(root: &Element, engine: &EditorEngine) -> Option<Rect> {
-    let point = &engine.selection().text_range()?.head;
+    point_rect(root, &engine.selection().text_range()?.head)
+}
+
+fn point_rect(root: &Element, point: &crate::engine::TextPoint) -> Option<Rect> {
     let (node, offset) = super::mapping::to_dom(root, point)?;
     let range = root.owner_document()?.create_range().ok()?;
     range.set_start(&node, offset).ok()?;
@@ -145,16 +148,32 @@ pub fn measure(root: &Element, e: &EditorEngine) -> Geometry {
     // during typing. Chromium reports an empty rectangle at those boundaries;
     // measure an equivalent text-node range without changing native selection.
     let caret = selection.or_else(|| caret_rect(root, e).map(local));
-    let block = e
-        .ui_state()
-        .hover_block
+    let suggestion_anchor = e
+        .suggestion()
+        .active
+        .as_ref()
+        .and_then(|trigger| point_rect(root, &trigger.range.anchor))
+        .map(local);
+    // An open menu or a selected image belongs to the selected block; the
+    // hovered block only positions the gutter.
+    let state = e.ui_state();
+    let selected_first = state.open_menu.is_some() || state.image.is_some();
+    let block_element = (!selected_first)
+        .then_some(state.hover_block)
+        .flatten()
         .or_else(|| crate::engine::commands::blocks::current_uid(e))
         .and_then(|u| {
             root.query_selector(&format!("[data-uid='{u}']"))
                 .ok()
                 .flatten()
-        })
+        });
+    let block = block_element
+        .as_ref()
         .map(|el| local(rect(el.get_bounding_client_rect())));
+    let block_line = block_element
+        .as_ref()
+        .and_then(|el| first_line(&win, el))
+        .map(local);
     let table = crate::engine::commands::blocks::current_uid(e)
         .and_then(|u| {
             root.query_selector(&format!("[data-uid='{u}'] table"))
@@ -202,10 +221,13 @@ pub fn measure(root: &Element, e: &EditorEngine) -> Geometry {
         Geometry {
             selection,
             caret: caret.or(block),
+            suggestion_anchor,
             block,
+            block_line,
             table,
             table_rows,
             table_columns,
+            hovered_cell: None,
             cell,
             viewport: local(viewport),
             scale_x: sx,
@@ -235,4 +257,55 @@ pub fn element_at(root: &Element, node: &Node) -> Option<Element> {
         .or_else(|| node.parent_element())?;
     let found = e.closest(".dx-block[data-uid]").ok()??;
     root.contains(Some(&found)).then_some(found)
+}
+
+/// The client rectangle of the first line of a block's own content: its
+/// content box top plus one line height. Blocks without text (tables, images,
+/// islands) report their content's top edge with a nominal line height.
+fn first_line(win: &web_sys::Window, block: &Element) -> Option<Rect> {
+    let content = block.first_element_child()?;
+    let bounds = rect(content.get_bounding_client_rect());
+    let style = win.get_computed_style(&content).ok()??;
+    let scale = content
+        .dyn_ref::<web_sys::HtmlElement>()
+        .map(|element| f64::from(element.offset_height()))
+        .filter(|height| *height > 0.)
+        .map_or(1., |height| bounds.height / height);
+    let px = |name: &str| {
+        style
+            .get_property_value(name)
+            .ok()
+            .and_then(|value| value.trim_end_matches("px").parse::<f64>().ok())
+            .map(|value| value * scale)
+    };
+    let font_size = px("font-size").unwrap_or(16. * scale);
+    let line_height = px("line-height").unwrap_or(font_size * 1.5);
+    let textual = content.has_attribute("data-inline-container")
+        || content
+            .query_selector("[data-inline-container]")
+            .ok()
+            .flatten()
+            .is_some_and(|inline| inline.closest("table").ok().flatten().is_none());
+    let top = bounds.y + px("padding-top").unwrap_or(0.) + px("border-top-width").unwrap_or(0.);
+    if textual {
+        return Some(Rect {
+            x: bounds.x,
+            y: top,
+            width: bounds.width,
+            height: line_height.min(bounds.height),
+        });
+    }
+    // A short block (a divider) centres its controls on itself; a tall one
+    // (a table, a card) aligns them with its top.
+    let height = 28. * scale;
+    Some(Rect {
+        x: bounds.x,
+        y: if bounds.height < height {
+            bounds.y + bounds.height / 2. - height / 2.
+        } else {
+            bounds.y
+        },
+        width: bounds.width,
+        height,
+    })
 }

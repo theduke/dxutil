@@ -79,6 +79,103 @@ fn open_toggle_tail_becomes_first_child() {
     assert_eq!(children[0].content[0].kind.0, "paragraph");
 }
 #[test]
+fn enter_on_empty_nested_paragraph_steps_out_of_the_toggle() {
+    let mut a = p("toggle");
+    a.content[0].kind = "toggle".into();
+    let empty = p("");
+    let empty_id = uid(&empty);
+    a.content.push(ComponentNode::container(
+        "block_children",
+        None,
+        vec![p("kid"), empty],
+    ));
+    let id = uid(&a);
+    let mut e = engine(vec![a]);
+    caret(&mut e, &empty_id, 0);
+    e.run(Command::SplitBlock);
+    assert_eq!(model::children(e.document(), Some(&id)).unwrap().len(), 1);
+    assert_eq!(uid(&root(&e)[1]), empty_id);
+}
+#[test]
+fn enter_at_block_start_opens_a_block_above_and_keeps_the_block() {
+    for (kind, attrs, above) in [
+        ("heading", serde_json::json!({"level": 2}), "paragraph"),
+        ("callout", serde_json::json!({}), "paragraph"),
+        ("todo", serde_json::json!({"checked": true}), "todo"),
+        (
+            "bulleted_list_item",
+            serde_json::json!({}),
+            "bulleted_list_item",
+        ),
+        (
+            "numbered_list_item",
+            serde_json::json!({"start": 5}),
+            "numbered_list_item",
+        ),
+    ] {
+        let mut a = p("Text");
+        a.content[0].kind = kind.into();
+        a.content[0].attrs = attrs.as_object().unwrap().clone();
+        let id = uid(&a);
+        let mut e = engine(vec![a]);
+        caret(&mut e, &id, 0);
+        e.run(Command::SplitBlock);
+        let blocks = root(&e);
+        assert_eq!(blocks[0].content[0].kind.0, above, "{kind}");
+        assert_eq!(blocks[0].text_content(), "", "{kind}");
+        assert_eq!(uid(&blocks[1]), id, "{kind}");
+        assert_eq!(blocks[1].content[0].kind.0, kind);
+        assert_eq!(blocks[1].text_content(), "Text");
+        if kind == "todo" {
+            assert_eq!(blocks[0].content[0].attrs["checked"], false);
+        }
+        if kind == "numbered_list_item" {
+            assert_eq!(
+                blocks[0].content[0].attrs["start"], 5,
+                "the list keeps its start"
+            );
+            assert!(!blocks[1].content[0].attrs.contains_key("start"));
+        } else {
+            assert_eq!(
+                blocks[1].content[0].attrs,
+                attrs.as_object().unwrap().clone()
+            );
+        }
+    }
+}
+#[test]
+fn deleting_a_selected_block_continues_at_the_end_of_the_block_before() {
+    let a = p("one");
+    let b = p("two");
+    let divider = model::block_node(ComponentNode::new("divider"));
+    let divider_id = uid(&divider);
+    let c = p("three");
+    let bid = uid(&b);
+    let mut e = engine(vec![a, b, divider, c]);
+    e.run(Command::SetSelection(EditorSelection::Node(divider_id)));
+    e.run(Command::DeleteBlocks);
+    assert_eq!(
+        e.selection(),
+        &EditorSelection::caret(InlineContainerRef::Block(bid), 3)
+    );
+}
+#[test]
+fn removing_another_block_keeps_the_caret() {
+    let a = p("one");
+    let divider = model::block_node(ComponentNode::new("divider"));
+    let divider_id = uid(&divider);
+    let c = p("three");
+    let cid = uid(&c);
+    let mut e = engine(vec![a, divider, c]);
+    caret(&mut e, &cid, 2);
+    e.run(Command::RemoveNode(divider_id));
+    assert_eq!(root(&e).len(), 2);
+    assert_eq!(
+        e.selection(),
+        &EditorSelection::caret(InlineContainerRef::Block(cid), 2)
+    );
+}
+#[test]
 fn heading_split_becomes_paragraph() {
     let mut a = p("title tail");
     a.content[0].kind = "heading".into();

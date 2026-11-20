@@ -929,6 +929,34 @@ pub fn is_safe_url(url: &str) -> bool {
     is_safe_url_for_role(url, UrlRole::Hyperlink)
 }
 
+/// Completes a link address as people type it: bare domains (`example.com`,
+/// `localhost:3000/x`) become `https://` links and bare e-mail addresses
+/// `mailto:` links. Addresses with a scheme, relative paths and anything else
+/// are returned trimmed but otherwise unchanged.
+pub fn normalize_link_url(value: &str) -> String {
+    let value = value.trim();
+    let has_scheme = value.split_once(':').is_some_and(|(scheme, rest)| {
+        scheme.starts_with(|c: char| c.is_ascii_alphabetic())
+            && scheme
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-' | '.'))
+            && !scheme.contains('.')
+            && !rest.starts_with(|c: char| c.is_ascii_digit())
+    });
+    if value.is_empty() || has_scheme || value.starts_with(['/', '#', '?', '.']) {
+        return value.to_string();
+    }
+    let host = value.split(['/', '?', '#']).next().unwrap_or_default();
+    if host.contains('@') && !value.contains('/') {
+        return format!("mailto:{value}");
+    }
+    let domain = host.split(':').next().unwrap_or_default();
+    if domain.contains('.') || domain == "localhost" {
+        return format!("https://{value}");
+    }
+    value.to_string()
+}
+
 pub fn is_safe_media_url(url: &str) -> bool {
     is_safe_url_for_role(url, UrlRole::Media)
 }

@@ -813,9 +813,210 @@ fn escape_title(title: &str) -> String {
     title.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
+/// Turns bare `http(s)://` and `www.` addresses in plain text into links, as
+/// GitHub-flavoured Markdown renders them. Text that is already a link or code
+/// is left alone. This is for displaying Markdown (such as an agent's reply);
+/// it changes the document, so it is not part of [`parse_markdown`].
+pub fn link_bare_urls(document: &mut EditorDocument) {
+    fn link_blocks(blocks: &mut [BlockNode]) {
+        for block in blocks {
+            if block.component == COMPONENT_CODE {
+                continue;
+            }
+            match &mut block.content {
+                NodeContent::Inline(nodes) => *nodes = inlines(std::mem::take(nodes)),
+                NodeContent::Blocks(children) => link_blocks(children),
+                NodeContent::Table(table) => {
+                    for row in &mut table.rows {
+                        for cell in &mut row.cells {
+                            link_blocks(&mut cell.blocks);
+                        }
+                    }
+                }
+                NodeContent::Void | NodeContent::Custom(_) => {}
+            }
+        }
+    }
+    fn inlines(nodes: Vec<InlineNode>) -> Vec<InlineNode> {
+        // The parser splits text at possible delimiters (`a_(b)`), so equally
+        // marked text is joined first to see whole addresses.
+        let mut joined: Vec<InlineNode> = Vec::with_capacity(nodes.len());
+        for node in nodes {
+            match joined.last_mut() {
+                Some(previous)
+                    if previous.component == crate::document::COMPONENT_TEXT
+                        && node.component == crate::document::COMPONENT_TEXT
+                        && previous.marks == node.marks
+                        && previous.attrs == node.attrs =>
+                {
+                    previous.text.push_str(&node.text);
+                }
+                _ => joined.push(node),
+            }
+        }
+        let mut linked = Vec::with_capacity(joined.len());
+        for node in joined {
+            let plain = node.component == crate::document::COMPONENT_TEXT
+                && !node
+                    .marks
+                    .iter()
+                    .any(|mark| mark.component == COMPONENT_LINK || mark.component == "code");
+            let urls = if plain {
+                bare_urls(&node.text)
+            } else {
+                Vec::new()
+            };
+            if urls.is_empty() {
+                linked.push(node);
+                continue;
+            }
+            let mut start = 0;
+            let mut part = 0;
+            let mut piece = |text: &str, link: Option<String>| {
+                let mut piece = node.clone();
+                piece.id = crate::document::NodeId::new(format!("{}-{part}", node.id.0));
+                piece.text = text.to_string();
+                piece.marks.extend(link.map(Mark::link));
+                part += 1;
+                piece
+            };
+            for (from, to) in urls {
+                if from > start {
+                    linked.push(piece(&node.text[start..from], None));
+                }
+                let url = &node.text[from..to];
+                let href = if url.starts_with("www.") {
+                    format!("https://{url}")
+                } else {
+                    url.to_string()
+                };
+                linked.push(piece(url, Some(href)));
+                start = to;
+            }
+            if start < node.text.len() {
+                linked.push(piece(&node.text[start..], None));
+            }
+        }
+        linked
+    }
+    link_blocks(&mut document.blocks);
+}
+
+/// Byte ranges of the bare web addresses in `text`.
+fn bare_urls(text: &str) -> Vec<(usize, usize)> {
+    let mut found = Vec::new();
+    let mut at = 0;
+    while at < text.len() {
+        let rest = &text[at..];
+        let Some(offset) = ["https://", "http://", "www."]
+            .iter()
+            .filter_map(|prefix| rest.find(prefix))
+            .min()
+        else {
+            break;
+        };
+        let start = at + offset;
+        let boundary = text[..start]
+            .chars()
+            .next_back()
+            .is_none_or(|c| c.is_whitespace() || matches!(c, '(' | '*' | '_' | '~' | '"' | '\''));
+        let mut end = text[start..]
+            .find(|c: char| c.is_whitespace() || c == '<')
+            .map_or(text.len(), |length| start + length);
+        // Trailing punctuation ends the sentence rather than the address, as
+        // does a closing parenthesis without its opening one.
+        loop {
+            let url = &text[start..end];
+            let Some(last) = url.chars().next_back() else {
+                break;
+            };
+            let unbalanced = last == ')' && url.matches(')').count() > url.matches('(').count();
+            if matches!(
+                last,
+                '.' | ',' | ':' | ';' | '!' | '?' | '"' | '\'' | '*' | '_' | '~'
+            ) || unbalanced
+            {
+                end -= last.len_utf8();
+            } else {
+                break;
+            }
+        }
+        let url = &text[start..end];
+        let address = if url.starts_with("www.") {
+            url::Url::parse(&format!("https://{url}"))
+        } else {
+            url::Url::parse(url)
+        };
+        let domain = address.as_ref().ok().and_then(url::Url::host_str);
+        if boundary
+            && domain.is_some_and(|host| {
+                let host = if url.starts_with("www.") {
+                    host.strip_prefix("www.").unwrap_or(host)
+                } else {
+                    host
+                };
+                host.contains('.') && host.split('.').all(|label| !label.is_empty())
+            })
+        {
+            found.push((start, end));
+            at = end.max(start + 1);
+        } else {
+            at = start + 1;
+        }
+    }
+    found
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bare_web_addresses_become_links_outside_code_and_links() {
+        // (markdown, linked text and href pairs)
+        let cases: [(&str, &[(&str, &str)]); 7] = [
+            (
+                "See https://example.com/a_(b), www.rust-lang.org. and `https://code.dev` or [docs](https://docs.rs) http://x",
+                &[
+                    ("https://example.com/a_(b)", "https://example.com/a_(b)"),
+                    ("www.rust-lang.org", "https://www.rust-lang.org"),
+                    ("docs", "https://docs.rs"),
+                ],
+            ),
+            (
+                "(see https://example.com/x)",
+                &[("https://example.com/x", "https://example.com/x")],
+            ),
+            ("Go to www.example", &[]),
+            ("```text\nhttps://code.example/\n```", &[]),
+            (
+                "**https://bold.example/path**",
+                &[("https://bold.example/path", "https://bold.example/path")],
+            ),
+            ("prefixhttps://example.com", &[]),
+            (
+                "Ends with https://example.com/end?",
+                &[("https://example.com/end", "https://example.com/end")],
+            ),
+        ];
+        for (markdown, expected) in cases {
+            let mut document = parse_markdown(markdown);
+            let original = document.text_content();
+            link_bare_urls(&mut document);
+            let NodeContent::Inline(nodes) = &document.blocks[0].content else {
+                panic!("paragraph");
+            };
+            let links: Vec<(&str, &str)> = nodes
+                .iter()
+                .filter_map(|node| {
+                    let mark = node.marks.iter().find(|m| m.component == COMPONENT_LINK)?;
+                    Some((node.text.as_str(), mark.attrs["href"].as_str()?))
+                })
+                .collect();
+            assert_eq!(links, expected, "{markdown}");
+            assert_eq!(document.text_content(), original, "{markdown}");
+        }
+    }
 
     #[test]
     fn supported_markdown_is_encode_decode_idempotent() {

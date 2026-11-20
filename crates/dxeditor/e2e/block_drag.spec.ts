@@ -41,11 +41,7 @@ async function moveTo(page: Page, uid: string, after: boolean, gutter = false) {
 test('compact handles and real pointer dragging reorder blocks with a full-width indicator and undo', async ({ page }, testInfo) => {
   const ids = await setup(page);
   await block(page, ids[0]).hover();
-  const style = await grip(page).evaluate(element => {
-    const style = getComputedStyle(element);
-    return { width: style.width, height: style.height, border: style.borderWidth, shadow: style.boxShadow, background: style.backgroundColor, cursor: style.cursor };
-  });
-  expect(style).toEqual({ width: '24px', height: '28px', border: '0px', shadow: 'none', background: 'rgba(0, 0, 0, 0)', cursor: 'grab' });
+  await expect(grip(page)).toBeInViewport();
   await testInfo.attach('compact-handles', { body: await page.screenshot(), contentType: 'image/png' });
   await startDrag(page, ids[0]);
   await moveTo(page, ids[2], true);

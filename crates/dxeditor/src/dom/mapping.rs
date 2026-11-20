@@ -47,7 +47,7 @@ fn atom(n: &Node) -> bool {
     n.dyn_ref::<Element>()
         .is_some_and(|e| e.has_attribute("data-inline-atom"))
 }
-fn length(n: &Node) -> usize {
+pub(crate) fn length(n: &Node) -> usize {
     if atom(n) {
         1
     } else if n.node_type() == Node::TEXT_NODE {

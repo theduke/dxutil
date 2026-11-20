@@ -15,6 +15,8 @@ use wasm_bindgen::JsCast;
 mod block_controls;
 #[path = "bubble.rs"]
 mod bubble;
+#[path = "controls.rs"]
+mod controls;
 #[path = "entity_preview.rs"]
 mod entity_preview;
 #[path = "icons.rs"]
@@ -71,6 +73,17 @@ fn attr(value: serde_json::Value) -> AttributeMap {
     value.as_object().cloned().unwrap_or_default()
 }
 fn style(ui: &EditorUiState, anchor: Option<Rect>, size: Size, side: Side) -> String {
+    place_surface(ui, anchor, size, side).0
+}
+/// Places a floating surface of `size` next to `anchor` (the caret or block
+/// when absent), returning its inline style and its placement in the
+/// editor's local coordinates.
+fn place_surface(
+    ui: &EditorUiState,
+    anchor: Option<Rect>,
+    size: Size,
+    side: Side,
+) -> (String, position::Placement) {
     let anchor = anchor
         .or(ui.geometry.caret)
         .or(ui.geometry.block)
@@ -116,14 +129,22 @@ fn style(ui: &EditorUiState, anchor: Option<Rect>, size: Size, side: Side) -> St
         side,
         8. / sy,
     );
-    format!(
-        "position:absolute;left:{}px;top:{}px;max-height:{}px;z-index:10;pointer-events:auto;transform:scale({},{});transform-origin:top left",
+    // Above its anchor a surface is placed by its bottom edge, so it touches
+    // the anchor whatever its rendered height (the size is only an estimate).
+    let (top, lift) = if placed.side == Side::Top {
+        (anchor.y - 8. / sy, " translateY(-100%)")
+    } else {
+        (placed.y, "")
+    };
+    let style = format!(
+        "position:absolute;left:{}px;top:{}px;max-height:{}px;z-index:10;pointer-events:auto;transform:scale({},{}){lift};transform-origin:top left",
         placed.x,
-        placed.y,
+        top,
         (placed.max_height * sy).max(80.),
         1. / sx,
         1. / sy
-    )
+    );
+    (style, placed)
 }
 fn suggestion_style(ui: &EditorUiState) -> String {
     let sx = if ui.geometry.scale_x > 0.0 {
@@ -151,7 +172,7 @@ fn suggestion_style(ui: &EditorUiState) -> String {
     } else {
         style(
             ui,
-            ui.geometry.caret,
+            ui.geometry.suggestion_anchor.or(ui.geometry.caret),
             Size {
                 width: 320.,
                 height: 360.,
@@ -202,12 +223,43 @@ fn menu_keys(event: KeyboardEvent, handle: EngineHandle) {
             .item(i)
             .and_then(|n| n.dyn_into::<web_sys::HtmlElement>().ok())
         {
-            if element.get_client_rects().length() > 0 {
+            if navigable(&element) {
                 choices.push(element);
             }
         }
     }
     if choices.is_empty() {
+        return;
+    }
+    if target.tag_name() == "SUMMARY"
+        && let Some(group) = target.parent_element()
+        && group.tag_name() == "DETAILS"
+        && matches!(key.as_str(), "ArrowLeft" | "ArrowRight")
+    {
+        let open = key == "ArrowRight";
+        if open {
+            let _ = group.set_attribute("open", "");
+            if let Ok(Some(item)) = group.query_selector("button:not([disabled])")
+                && let Ok(item) = item.dyn_into::<web_sys::HtmlElement>()
+            {
+                let _ = item.focus();
+            }
+        } else {
+            let _ = group.remove_attribute("open");
+        }
+        event.prevent_default();
+        event.stop_propagation();
+        return;
+    }
+    if key == "ArrowLeft"
+        && let Ok(Some(group)) = target.closest("details[open]")
+        && let Ok(Some(summary)) = group.query_selector(":scope > summary")
+        && let Ok(summary) = summary.dyn_into::<web_sys::HtmlElement>()
+    {
+        let _ = group.remove_attribute("open");
+        let _ = summary.focus();
+        event.prevent_default();
+        event.stop_propagation();
         return;
     }
     let current = choices
@@ -227,6 +279,22 @@ fn menu_keys(event: KeyboardEvent, handle: EngineHandle) {
     event.prevent_default();
     event.stop_propagation();
 }
+/// Whether a menu control is shown: laid out, and not inside a collapsed
+/// group (other than that group's own summary).
+fn navigable(element: &web_sys::HtmlElement) -> bool {
+    if element.get_client_rects().length() == 0 {
+        return false;
+    }
+    match element.closest("details:not([open])").ok().flatten() {
+        Some(closed) => {
+            element.tag_name() == "SUMMARY"
+                && element
+                    .parent_element()
+                    .is_some_and(|parent| parent == closed)
+        }
+        None => true,
+    }
+}
 fn roving(element: &web_sys::Element) {
     if let Ok(items) = element.query_selector_all("button:not([disabled]),input,summary") {
         let active = element
@@ -238,7 +306,7 @@ fn roving(element: &web_sys::Element) {
                     .item(index)
                     .and_then(|node| node.dyn_into::<web_sys::HtmlElement>().ok())
             })
-            .filter(|item| item.get_client_rects().length() > 0)
+            .filter(|item| navigable(item))
             .collect();
         let selected = choices
             .iter()
@@ -322,39 +390,7 @@ fn ActionButton(
     } else {
         format!("{label} ({shortcut_display})")
     };
-    let text = match label.as_str() {
-        "Bold" => "B",
-        "Italic" => "I",
-        "Underline" => "U",
-        "Strike" => "S",
-        "Code" => "</>",
-        other => other,
-    };
-    rsx! {button{r#type:"button",class:if destructive{"dxeditor-engine__button dxeditor-table-destructive"}else{"dxeditor-engine__button"},title:"{title}",aria_label:"{label}",aria_pressed:pressed.to_string(),aria_keyshortcuts:"{shortcut}",onmousedown:move|e|e.prevent_default(),onclick:move |_|handle.run(command.clone()),"{text}"}}
-}
-#[component]
-fn MenuAction(
-    label: String,
-    handle: EngineHandle,
-    command: Command,
-    #[props(default)] checked: Option<bool>,
-    #[props(default)] destructive: bool,
-) -> Element {
-    rsx! {button{r#type:"button",role:if checked.is_some(){"menuitemcheckbox"}else{"menuitem"},aria_checked:checked.map(|c|c.to_string()),class:if destructive{"dxeditor-engine__button dxeditor-table-destructive"}else{"dxeditor-engine__button"},onmousedown:move|e|e.prevent_default(),onclick:move |_|{handle.run(command.clone());handle.close();},"{label}"}}
-}
-#[component]
-fn Colors(
-    handle: EngineHandle,
-    #[props(default)] block: bool,
-    #[props(default)] background: bool,
-) -> Element {
-    let mut colors = vec![None];
-    colors.extend(
-        crate::profiles::block_document::COLOR_TOKENS
-            .into_iter()
-            .map(|s| Some(s.to_string())),
-    );
-    rsx! {div{class:"dxeditor-color-swatches",role:"group",aria_label:if background{"Highlight color"}else{"Text color"},for color in colors{ {let key=if background{"background_color"}else{"text_color"};let mark_kind=if background{"highlight"}else{"text_color"};let label=color.as_ref().map(|s|format!("{s} {}",if background{"background"}else{"text"})).unwrap_or_else(||"Default color".into());let command=if block{Command::SetColor{key:key.into(),color:color.clone()}}else if let Some(color)=&color{let mut mark=ComponentMark::new(mark_kind);mark.attrs.insert("color".into(),serde_json::json!(color));Command::SetMark(mark)}else{Command::UnsetMark(mark_kind.into())};let persist=color.clone();let handle=handle.clone();rsx!{button{r#type:"button",class:"dxeditor-engine__button",aria_label:"{label}",title:"{label}","data-color":color.clone().unwrap_or_default(),onmousedown:move|e|e.prevent_default(),onclick:move |_|{if let Some(color)=&persist{if let Some(storage)=web_sys::window().and_then(|w|w.local_storage().ok().flatten()){let _=storage.set_item(if background{"dxeditor-last-highlight"}else{"dxeditor-last-textColor"},color);}}handle.run(command.clone());},"●"}}} }}}
+    rsx! {button{r#type:"button",class:if destructive{"dxeditor-engine__button dxeditor-table-destructive"}else{"dxeditor-engine__button"},title:"{title}",aria_label:"{label}",aria_pressed:pressed.to_string(),aria_keyshortcuts:"{shortcut}",onmousedown:move|e|e.prevent_default(),onclick:move |_|handle.run(command.clone()),"{label}"}}
 }
 #[component]
 pub fn EditorSurfaces(
@@ -367,19 +403,67 @@ pub fn EditorSurfaces(
         return rsx! {};
     }
     if ui.read_only {
-        return rsx! {style{dangerous_inner_html:SURFACE_STYLE}entity_preview::EntityPreview{ui,handle}};
+        return rsx! {
+            style { dangerous_inner_html: SURFACE_STYLE }
+            entity_preview::EntityPreview { ui, handle }
+        };
     }
+    let text_selected = ui.focused
+        && !ui.selection.collapsed
+        && matches!(ui.selection.selection, EditorSelection::Text(_));
+    let manual_suggestion = ui
+        .suggestion
+        .as_ref()
+        .is_some_and(|suggestion| suggestion.manual);
+    // At most one contextual surface is shown; the table's edge controls stay
+    // while text inside one of its cells is formatted.
+    let menu = ui.open_menu.clone();
+    let contextual = menu.is_none() && !manual_suggestion && ui.image.is_none();
+    let block_controls = menu.is_none()
+        && ui
+            .table
+            .as_ref()
+            .is_none_or(|table| ui.hover_block.as_ref().is_some_and(|uid| uid != &table.uid))
+        && ui.image.is_none()
+        && ui.suggestion.is_none()
+        && !text_selected
+        && ui.selection.kind.as_deref() != Some("chip");
     rsx! {
-        style{dangerous_inner_html:SURFACE_STYLE}
-        if let Some(menu)=&ui.open_menu {
-            match menu.as_str(){"image-url"=>rsx!{image_menu::ImageUrlPopover{ui:ui.clone(),handle:handle.clone()}},"bookmark"=>rsx!{bubble::BookmarkPopover{ui:ui.clone(),handle:handle.clone()}},"link"=>rsx!{bubble::LinkPopover{ui:ui.clone(),handle:handle.clone()}},"block"=>rsx!{block_controls::BlockMenu{ui:ui.clone(),handle:handle.clone(),catalog:catalog.clone()}},"table"|"table-row"|"table-column"=>rsx!{table_menu::TableMenu{ui:ui.clone(),handle:handle.clone()}},"image"=>rsx!{image_menu::ImageMenu{ui:ui.clone(),handle:handle.clone()}},_=>rsx!{}}
-        } else if ui.suggestion.as_ref().is_some_and(|suggestion|suggestion.manual){slash::Suggestions{ui:ui.clone(),handle:handle.clone()}}
-        else if ui.image.is_some(){image_menu::ImageMenu{ui:ui.clone(),handle:handle.clone()}}
-        else if ui.table.is_some(){table_menu::TableEdges{ui:ui.clone(),handle:handle.clone()}}
-        else if ui.focused&&!ui.selection.collapsed&&matches!(ui.selection.selection,EditorSelection::Text(_)){bubble::Bubble{ui:ui.clone(),handle:handle.clone(),catalog:catalog.clone()}}
-        else if ui.suggestion.is_some(){slash::Suggestions{ui:ui.clone(),handle:handle.clone()}}
-        if ui.entity_preview.is_some(){entity_preview::EntityPreview{ui:ui.clone(),handle:handle.clone()}}
-        if ui.open_menu.is_none()&&ui.table.is_none()&&ui.image.is_none()&&ui.suggestion.is_none()&&!(ui.focused&&!ui.selection.collapsed&&matches!(ui.selection.selection,EditorSelection::Text(_)))&&ui.selection.kind.as_deref()!=Some("chip"){block_controls::BlockControls{ui:ui,handle,catalog}}
+        style { dangerous_inner_html: SURFACE_STYLE }
+        if let Some(menu) = &menu {
+            match menu.as_str() {
+                "image-url" => rsx! { image_menu::ImageUrlPopover { ui: ui.clone(), handle: handle.clone() } },
+                "bookmark" => rsx! { bubble::BookmarkPopover { ui: ui.clone(), handle: handle.clone() } },
+                "link" => rsx! { bubble::LinkPopover { ui: ui.clone(), handle: handle.clone() } },
+                "block" => rsx! { block_controls::BlockMenu { ui: ui.clone(), handle: handle.clone(), catalog: catalog.clone() } },
+                "table" | "table-row" | "table-column" => rsx! {
+                    table_menu::TableEdges { ui: ui.clone(), handle: handle.clone() }
+                    table_menu::TableMenu { ui: ui.clone(), handle: handle.clone() }
+                },
+                "image" => rsx! { image_menu::ImageMenu { ui: ui.clone(), handle: handle.clone() } },
+                _ => rsx! {},
+            }
+        } else if manual_suggestion {
+            slash::Suggestions { ui: ui.clone(), handle: handle.clone() }
+        } else if ui.focused && ui.image.is_some() {
+            image_menu::ImageMenu { ui: ui.clone(), handle: handle.clone() }
+        }
+        if contextual && ui.focused && ui.table.is_some() {
+            table_menu::TableEdges { ui: ui.clone(), handle: handle.clone() }
+        }
+        if contextual && text_selected {
+            bubble::Bubble { ui: ui.clone(), handle: handle.clone(), catalog: catalog.clone() }
+        } else if contextual && ui.suggestion.is_some() {
+            slash::Suggestions { ui: ui.clone(), handle: handle.clone() }
+        } else if contextual && ui.focused && ui.selection.collapsed && ui.selection.link.is_some() {
+            bubble::LinkPreview { ui: ui.clone(), handle: handle.clone() }
+        }
+        if ui.entity_preview.is_some() {
+            entity_preview::EntityPreview { ui: ui.clone(), handle: handle.clone() }
+        }
+        if block_controls {
+            block_controls::BlockControls { ui, handle, catalog }
+        }
     }
 }
 const SURFACE_STYLE: &str = r#"
@@ -390,7 +474,7 @@ const SURFACE_STYLE: &str = r#"
 .dxeditor-engine__surface[role=menu]{flex-direction:column;min-width:200px}.dxeditor-engine__surface input{min-height:30px;max-width:100%;box-sizing:border-box;border:1px solid var(--dx-border,#cfd8e3);border-radius:4px;padding:4px 8px;font:inherit}
 .dxeditor-color-swatches [data-color=gray]{color:#737b86}.dxeditor-color-swatches [data-color=brown]{color:#986b4c}.dxeditor-color-swatches [data-color=orange]{color:#c06a22}.dxeditor-color-swatches [data-color=yellow]{color:#a17a12}.dxeditor-color-swatches [data-color=green]{color:#38865d}.dxeditor-color-swatches [data-color=blue]{color:#387ab7}.dxeditor-color-swatches [data-color=purple]{color:#8462b5}.dxeditor-color-swatches [data-color=pink]{color:#b34f8b}.dxeditor-color-swatches [data-color=red]{color:#be4f4f}
 .dxeditor-color-swatches{display:flex;flex-wrap:wrap;max-width:240px}.dxeditor-bubble__separator{width:1px;background:var(--dx-border,#cfd8e3);margin:3px}.dxeditor-engine__slash,.dxeditor-engine__mentions{flex-direction:column;width:320px;max-height:360px}.dxeditor-engine__slash [role=option],.dxeditor-engine__mentions [role=option]{display:flex;align-items:center;gap:8px;width:100%;flex-shrink:0;min-height:44px}.dxeditor-slash-copy{display:flex;flex-direction:column;flex:1}.dxeditor-slash-description{font-size:12px;color:var(--dx-text-muted,#617084)}.dxeditor-menu-group{padding:6px;font-size:12px;color:var(--dx-text-muted,#617084)}.dxeditor-table-destructive{color:var(--semantic-color-danger,#b42318)}
-.dxeditor-gutter{display:flex;gap:2px;position:absolute;z-index:4;pointer-events:auto}.dxeditor-gutter button{min-width:32px;min-height:32px;padding:4px}.dxeditor-table-edges{position:absolute;pointer-events:none;z-index:5}.dxeditor-table-edges button{pointer-events:auto;position:absolute}.dxeditor-image-menu{flex-wrap:wrap;max-width:340px}.dxeditor-image-menu label{display:flex;flex-direction:column;font-size:12px}.dxeditor-image-menu input{width:220px}
-@media(max-width:640px){.dxeditor-engine__slash,.dxeditor-engine__mentions{border-radius:12px 12px 0 0;padding:12px 12px max(12px,env(safe-area-inset-bottom))}.dxeditor-engine__button{min-height:32px}.dxeditor-gutter{flex-direction:column}.dxeditor-engine__bubble{flex-wrap:wrap;max-width:calc(100vw - 16px)}}
+.dxeditor-gutter{display:flex;gap:2px;position:absolute;z-index:4;pointer-events:auto}.dxeditor-table-edges{position:absolute;pointer-events:none;z-index:5}.dxeditor-table-edges button{pointer-events:auto;position:absolute}
+@media(max-width:640px){.dxeditor-engine__slash,.dxeditor-engine__mentions{border-radius:12px 12px 0 0;padding:12px 12px max(12px,env(safe-area-inset-bottom))}.dxeditor-engine__button{min-height:32px}.dxeditor-engine__bubble{flex-wrap:wrap;max-width:calc(100vw - 16px)}}
 @media(prefers-reduced-motion:reduce){.dxeditor-engine__surface{scroll-behavior:auto}}
 "#;

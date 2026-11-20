@@ -48,10 +48,15 @@ pub struct DomHost {
     pub(crate) drag_indicator: Option<Element>,
     pub(crate) drag_ghost: Option<Element>,
     pub(crate) cell_drag: Option<(String, (usize, usize))>,
+    pub(crate) hovered_cell: Option<(String, (usize, usize))>,
     pub(crate) table_drag: Option<(String, usize)>,
     frame: Option<i32>,
     scroll_selection: bool,
     last_geometry: crate::engine::ui_state::Geometry,
+    /// The selection whose decorations (`data-selected`) the DOM currently shows.
+    decorated: Option<crate::engine::EditorSelection>,
+    /// The block holding the text caret, marked `data-caret`.
+    caret_block: Option<Element>,
 }
 impl DomHost {
     pub fn mount(
@@ -154,10 +159,13 @@ impl DomHost {
             drag_indicator: None,
             drag_ghost: None,
             cell_drag: None,
+            hovered_cell: None,
             table_drag: None,
             frame: None,
             scroll_selection: false,
             last_geometry: crate::engine::ui_state::Geometry::default(),
+            decorated: None,
+            caret_block: None,
         }));
         {
             let mut h = result.borrow_mut();
@@ -322,6 +330,40 @@ impl DomHost {
         }
         Self::schedule_geometry(host);
     }
+    /// Keeps the selection decorations in step with the engine. They are
+    /// refreshed whenever the selection changes, natively or by command, and
+    /// after a render that may have replaced decorated elements. Moving a
+    /// text caret only moves the `data-caret` mark of its block.
+    fn decorate_selection(&mut self, output: &[EngineOutput]) {
+        use crate::engine::EditorSelection;
+        let engine = self.engine.borrow();
+        let selection = engine.selection();
+        let rendered = output.iter().any(|o| matches!(o, EngineOutput::Render(_)));
+        let text = matches!(selection, EditorSelection::Text(_));
+        let was_text = matches!(self.decorated, Some(EditorSelection::Text(_)));
+        let unchanged = self.decorated.as_ref() == Some(selection);
+        // Text-to-text moves carry no decorations; an unchanged non-text
+        // selection needs them again only when a render replaced elements.
+        let between_text = text && was_text;
+        let still_decorated = unchanged && !(rendered && !text);
+        if !between_text && !still_decorated {
+            selection_sync::decorate(&self.root, &engine);
+        }
+        self.decorated = Some(selection.clone());
+        let caret = text
+            .then(|| crate::engine::commands::blocks::current_uid(&engine))
+            .flatten()
+            .and_then(|uid| self.renderer.blocks.get(&uid).cloned());
+        if rendered || caret != self.caret_block {
+            if let Some(previous) = self.caret_block.take() {
+                let _ = previous.remove_attribute("data-caret");
+            }
+            if let Some(block) = &caret {
+                let _ = block.set_attribute("data-caret", "");
+            }
+            self.caret_block = caret;
+        }
+    }
     pub(crate) fn owns_focus(&self, element: &Element) -> bool {
         if element
             .closest(".dxeditor-island")
@@ -373,9 +415,16 @@ impl DomHost {
                 if std::mem::take(&mut h.scroll_selection) && h.engine.borrow().focused {
                     scrolling::reveal_selection(&h.root, &h.engine.borrow());
                 }
-                let geometry = geometry::measure(&h.root, &h.engine.borrow());
-                h.last_geometry = geometry.clone();
+                let mut geometry = geometry::measure(&h.root, &h.engine.borrow());
                 let mut state = h.engine.borrow().ui_state();
+                geometry.hovered_cell = h.hovered_cell.as_ref().and_then(|(uid, cell)| {
+                    state
+                        .table
+                        .as_ref()
+                        .filter(|table| table.uid == *uid)
+                        .map(|_| *cell)
+                });
+                h.last_geometry = geometry.clone();
                 state.geometry = geometry;
                 (h.callback.clone(), state)
             };
@@ -464,6 +513,7 @@ impl DomHost {
             );
         }
         let selection_started = now_ms();
+        self.decorate_selection(output);
         // A parent document can receive island attribute updates while a
         // nested editor owns focus. Its retained selection must not take over
         // the browser's single selection (and with it keyboard focus).

@@ -186,6 +186,7 @@ pub struct EditorEngine {
     pub(crate) focused: bool,
     pub(crate) hover_block: Option<Uid>,
     pub(crate) open_menu: Option<String>,
+    block_menu_selection: Option<EditorSelection>,
     pub(crate) suggestion: SuggestionState,
     pub(crate) composer_submit_on_enter: bool,
     pub(crate) last_highlight: String,
@@ -199,6 +200,7 @@ pub struct EditorEngine {
     suggestion_mode: String,
     triggers: Vec<String>,
     pending: BTreeMap<u64, PendingRequest>,
+    active_entity_request: Option<u64>,
     next_request_id: u64,
     last_ui: Option<EditorUiState>,
     batch: Option<BatchState>,
@@ -249,6 +251,7 @@ impl EditorEngine {
             focused: false,
             hover_block: None,
             open_menu: None,
+            block_menu_selection: None,
             suggestion: SuggestionState::default(),
             composer_submit_on_enter: true,
             last_highlight: "yellow".into(),
@@ -266,6 +269,7 @@ impl EditorEngine {
                 vec!["/".into(), "@".into(), "[[".into()]
             },
             pending: BTreeMap::new(),
+            active_entity_request: None,
             next_request_id: 1,
             last_ui: None,
             batch: None,
@@ -406,6 +410,11 @@ impl EditorEngine {
     /// leave focus and selection handling to the interaction's target.
     pub fn dismiss_overlays(&mut self) -> Vec<EngineOutput> {
         self.open_menu = None;
+        self.block_menu_selection = None;
+        if self.manual_slash_query().is_some() {
+            self.manual_suggestion = false;
+            self.suggestion.close();
+        }
         self.entity_preview = None;
         self.publish_ui(Vec::new())
     }
@@ -523,15 +532,78 @@ impl EditorEngine {
                 }
             }
             Command::OpenEntity(entity_id) => vec![EngineOutput::EntityOpen { entity_id }],
+            Command::OpenMenu(menu) if menu == "insert" && self.profile.has_blocks() => {
+                if let Some(range) = self
+                    .selection
+                    .text_range()
+                    .filter(|range| range.is_collapsed())
+                {
+                    self.suggestion.close();
+                    self.manual_suggestion = true;
+                    self.suggestion.update(Some(suggestion::TriggerMatch {
+                        trigger: "/".into(),
+                        query: String::new(),
+                        range: range.clone(),
+                    }));
+                    self.suggestion
+                        .set_items(self.suggestion.generation, self.slash_items(""));
+                }
+                Vec::new()
+            }
             Command::OpenMenu(menu) => {
+                self.block_menu_selection = (menu == "block").then(|| self.selection.clone());
                 self.open_menu = Some(menu);
                 Vec::new()
             }
             Command::CloseMenu => {
                 self.open_menu = None;
-                vec![EngineOutput::Focus {
+                let mut output = Vec::new();
+                if let Some(previous) = self.block_menu_selection.take()
+                    && let EditorSelection::Node(uid) = &self.selection
+                {
+                    let selection = if previous.is_collapsed()
+                        && previous.text_range().is_some()
+                        && self
+                            .container_owner(&previous.text_range().unwrap().head.container)
+                            .as_ref()
+                            == Some(uid)
+                        && selection_exists(&self.doc, &previous)
+                    {
+                        Some(previous)
+                    } else if let Some(node) = self
+                        .content(uid)
+                        .filter(|node| model::is_text_kind(&node.kind.0))
+                    {
+                        Some(EditorSelection::caret(
+                            InlineContainerRef::Block(uid.clone()),
+                            text::len(&node.content),
+                        ))
+                    } else if previous.text_range().is_some()
+                        && selection_exists(&self.doc, &previous)
+                    {
+                        Some(previous)
+                    } else {
+                        commands::blocks::caret_beside(self, std::slice::from_ref(uid))
+                    };
+                    if let Some(selection) = selection {
+                        output.extend(commands::run(self, Command::SetSelection(selection)));
+                    }
+                }
+                output.push(EngineOutput::Focus {
                     target: FocusTarget::Editor,
-                }]
+                });
+                output
+            }
+            command @ Command::InsertBlocks {
+                at: crate::InsertAt::Selection,
+                ..
+            } if self.open_menu.as_deref() == Some("bookmark") => {
+                self.open_menu = None;
+                self.batch_edit(TxKind::Command, |engine| {
+                    let mut output = commands::run(engine, command);
+                    output.extend(engine.continue_after_block());
+                    output
+                })
             }
             Command::SuggestionNext(delta) => {
                 self.suggestion.step(delta);
@@ -554,6 +626,12 @@ impl EditorEngine {
                 if let Some(mut matched) = self.suggestion.active.clone() {
                     matched.query = query;
                     self.suggestion.update(Some(matched));
+                    if self.manual_slash_query().is_some() {
+                        let query = self.manual_slash_query().unwrap_or_default();
+                        let items = self.slash_items(query);
+                        self.suggestion.set_items(self.suggestion.generation, items);
+                        return self.publish_ui(Vec::new());
+                    }
                     if let Some(matched) = &self.suggestion.active {
                         vec![EngineOutput::QuerySuggestions {
                             generation: self.suggestion.generation,
@@ -604,6 +682,9 @@ impl EditorEngine {
     pub fn handle(&mut self, input: EngineInput) -> Vec<EngineOutput> {
         match input {
             EngineInput::InsertText { text } => {
+                if let Some(query) = self.manual_slash_query() {
+                    return self.run(Command::SetSuggestionQuery(format!("{query}{text}")));
+                }
                 self.last_input_rule = false;
                 self.typed_mention_trigger = text.ends_with('@');
                 let mut out = self.run(Command::InsertText(text));
@@ -624,7 +705,11 @@ impl EditorEngine {
                             }
                         }
                     }
+                    let closed = input_rules::closing_mark(self);
                     out.extend(input_rules::apply_transaction(self, tx));
+                    if let Some(mark) = closed {
+                        self.exclude_stored_mark(mark);
+                    }
                 }
                 self.typed_mention_trigger = false;
                 self.finish_outputs(out)
@@ -892,9 +977,11 @@ impl EditorEngine {
         self.stored_marks.clear();
         self.stored_marks_explicit = false;
         self.pending.clear();
+        self.active_entity_request = None;
         self.manual_suggestion = false;
         self.suggestion.close();
         self.open_menu = None;
+        self.block_menu_selection = None;
         if policy == HistoryPolicy::Reset {
             self.history.clear();
         } else {
@@ -1030,6 +1117,13 @@ fn error_output(error: EngineError) -> EngineOutput {
 }
 
 impl EditorEngine {
+    pub(crate) fn manual_slash_query(&self) -> Option<&str> {
+        self.suggestion
+            .active
+            .as_ref()
+            .filter(|matched| self.manual_suggestion && matched.trigger == "/")
+            .map(|matched| matched.query.as_str())
+    }
     fn publish_ui(&mut self, mut outputs: Vec<EngineOutput>) -> Vec<EngineOutput> {
         let ui = self.ui_state();
         if self.last_ui.as_ref() != Some(&ui) {
@@ -1062,6 +1156,8 @@ impl EditorEngine {
                     .values()
                     .filter_map(|s| s.insert.as_ref())
                     .flat_map(|s| std::iter::once(s.label.clone()).chain(s.keywords.clone()))
+                    // Headings are offered per level ("/heading 2").
+                    .chain((1..=3).map(|level| format!("Heading {level}")))
                     .collect::<Vec<_>>();
                 suggestion::detect(
                     &before,
@@ -1079,7 +1175,19 @@ impl EditorEngine {
         {
             if matched.trigger == "/" && self.profile != Profile::Composer {
                 let items = self.slash_items(&matched.query);
-                self.suggestion.set_items(self.suggestion.generation, items);
+                // "No results" shows for a couple of characters past the last
+                // match; beyond that the slash was just text and the menu closes.
+                let query: Vec<char> = matched.query.chars().collect();
+                let typed_past = items.is_empty()
+                    && query.len() >= 3
+                    && self
+                        .slash_items(&query[..query.len() - 2].iter().collect::<String>())
+                        .is_empty();
+                if typed_past {
+                    self.suggestion.close();
+                } else {
+                    self.suggestion.set_items(self.suggestion.generation, items);
+                }
             } else if self.options.host_entity_picker
                 && matched.trigger == "@"
                 && matched.query.is_empty()
@@ -1091,13 +1199,10 @@ impl EditorEngine {
                     request_id,
                     mode: "mention".into(),
                 };
-                self.pending.insert(
-                    request_id,
-                    PendingRequest {
-                        selection: EditorSelection::Text(matched.range),
-                        kind: PendingKind::Picker("mention".into()),
-                    },
-                );
+                self.capture_request(&event);
+                if let Some(request) = self.pending.get_mut(&request_id) {
+                    request.selection = EditorSelection::Text(matched.range);
+                }
                 self.suggestion.dismiss();
                 outputs.push(EngineOutput::Request(event));
             } else {
@@ -1119,6 +1224,17 @@ impl EditorEngine {
             if self.profile == Profile::Composer || !self.schema.has_kind(&spec.id.0) {
                 continue;
             }
+            // Details markers only divide a graph node's content.
+            if spec.id.0 == "details_break" && self.profile != Profile::GraphNode {
+                continue;
+            }
+            // Mentions and sub-documents are offered once, with the entity
+            // actions below.
+            if matches!(spec.id.0.as_str(), "mention" | "page")
+                && self.triggers.iter().any(|trigger| trigger == "@")
+            {
+                continue;
+            }
             let levels = if spec.id.0 == "heading" {
                 vec![1, 2, 3]
             } else {
@@ -1137,18 +1253,42 @@ impl EditorEngine {
                     "code_block" => serde_json::json!({"wrap":false}),
                     _ => serde_json::json!({}),
                 };
-                let terms = format!("{} {}", label, insert.keywords.join(" "));
+                let mut terms = format!("{} {}", label, insert.keywords.join(" "));
+                if level > 0 {
+                    terms.push_str(&format!(" h{level}"));
+                }
                 let Some(score) = suggestion::fuzzy_score(query, &terms) else {
                     continue;
                 };
-                items.push(crate::SuggestionItem{id:if level>0{format!("{}:{level}",spec.id.0)}else{spec.id.0.clone()},label,description:Some(insert.description.clone()),icon:Some(insert.icon.clone()),data:serde_json::json!({"kind":spec.id.0,"attrs":attrs,"group":format!("{:?}",insert.group).to_lowercase(),"shortcut":insert.shortcut}),priority:-(score as i32)});
+                let description = match level {
+                    1 => "Big section heading.".to_string(),
+                    2 => "Medium section heading.".to_string(),
+                    3 => "Small section heading.".to_string(),
+                    _ => insert.description.clone(),
+                };
+                items.push(crate::SuggestionItem{id:if level>0{format!("{}:{level}",spec.id.0)}else{spec.id.0.clone()},label,description:Some(description),icon:Some(if level>0{format!("h{level}")}else{insert.icon.clone()}),data:serde_json::json!({"kind":spec.id.0,"attrs":attrs,"group":format!("{:?}",insert.group).to_lowercase(),"shortcut":if level>0{Some(format!("{} Space","#".repeat(level)))}else{insert.shortcut.clone()}}),priority:-(score as i32)});
             }
         }
         if self.triggers.iter().any(|trigger| trigger == "@") {
-            for (kind, label, mode) in [
-                ("mention", "Mention", "mention"),
-                ("entity_embed", "Embed entity", "embed"),
-                ("page", "Sub-document", "page"),
+            for (kind, label, mode, description) in [
+                (
+                    "mention",
+                    "Mention",
+                    "mention",
+                    "Link an entity inline in the text.",
+                ),
+                (
+                    "entity_embed",
+                    "Embed entity",
+                    "embed",
+                    "Show an entity as a card.",
+                ),
+                (
+                    "page",
+                    "Sub-document",
+                    "page",
+                    "Create a document inside this one.",
+                ),
             ] {
                 if kind == "entity_embed" && !self.schema.has_kind(kind)
                     || kind == "page" && !self.schema.has_kind("entity_embed")
@@ -1161,7 +1301,7 @@ impl EditorEngine {
                     items.push(crate::SuggestionItem {
                         id: kind.into(),
                         label: label.into(),
-                        description: Some("Link your content to an entity".into()),
+                        description: Some(description.into()),
                         icon: Some("@".into()),
                         data: serde_json::json!({"kind":kind,"mode":mode,"group":"semantic"}),
                         priority: -(score as i32),
@@ -1188,6 +1328,7 @@ impl EditorEngine {
                     "advanced" => 3,
                     _ => 4,
                 },
+                slash_rank(i),
                 i.label.clone(),
             )
         });
@@ -1313,13 +1454,15 @@ impl EditorEngine {
             self.recent_blocks.retain(|id| id != &item.id);
             self.recent_blocks.insert(0, item.id.clone());
             self.recent_blocks.truncate(5);
-            outputs.extend(commands::run(
-                self,
-                Command::Delete {
-                    direction: text::Direction::Backward,
-                    unit: text::DeleteUnit::Selection,
-                },
-            ));
+            if !matched.range.is_collapsed() {
+                outputs.extend(commands::run(
+                    self,
+                    Command::Delete {
+                        direction: text::Direction::Backward,
+                        unit: text::DeleteUnit::Selection,
+                    },
+                ));
+            }
             let Some(kind) = item.data.get("kind").and_then(serde_json::Value::as_str) else {
                 return outputs;
             };
@@ -1370,10 +1513,12 @@ impl EditorEngine {
                 ));
                 if matches!(kind, "image" | "file") {
                     outputs.push(EngineOutput::Request(EngineEvent::FilePickerRequest {
-                        uid,
+                        uid: uid.clone(),
                         accept: if kind == "image" { "image/*" } else { "*" }.into(),
+                        placeholder: true,
                     }));
                 }
+                outputs.extend(self.continue_after_block());
             }
         } else if let Some(entity) = item
             .data
@@ -1382,6 +1527,7 @@ impl EditorEngine {
         {
             let mode = self.suggestion_mode.clone();
             outputs.extend(self.insert_entity(entity, &mode));
+            outputs.extend(self.continue_after_block());
             self.suggestion_mode = "mention".into();
         } else if item.data.get("create").and_then(serde_json::Value::as_bool) == Some(true) {
             outputs.extend(self.request_entity_create(matched.trigger, matched.query));
@@ -1485,6 +1631,11 @@ impl EditorEngine {
             _ => None,
         };
         if let Some((id, kind)) = request {
+            if matches!(kind, PendingKind::Picker(_) | PendingKind::Create { .. })
+                && let Some(previous) = self.active_entity_request.replace(id)
+            {
+                self.pending.remove(&previous);
+            }
             self.pending.insert(
                 id,
                 PendingRequest {
@@ -1523,36 +1674,66 @@ impl EditorEngine {
         let Some(request) = self.pending.remove(&request_id) else {
             return vec![];
         };
+        if self.active_entity_request == Some(request_id) {
+            self.active_entity_request = None;
+        }
+        let owns_selection = self.selection == request.selection
+            || (matches!(&request.kind, PendingKind::Picker(mode) if mode == "mention")
+                && request.selection.text_range().is_some_and(|range| {
+                    self.selection
+                        .text_range()
+                        .is_some_and(|current| current.is_collapsed() && current.head == range.head)
+                }));
+        if !selection_exists(&self.doc, &request.selection) {
+            return vec![];
+        }
         let Some(entity) = entity else {
+            if !owns_selection {
+                return vec![];
+            }
             self.suggestion.dismiss();
             return self.publish_ui(vec![EngineOutput::Focus {
                 target: FocusTarget::Editor,
             }]);
         };
-        if !selection_exists(&self.doc, &request.selection) {
+        if let PendingKind::Create {
+            trigger,
+            uid,
+            content,
+        } = &request.kind
+            && matches!(trigger.as_str(), "task" | "page")
+            && uid.as_ref().and_then(|uid| self.content(uid)) != content.as_ref()
+        {
             return vec![];
         }
-        self.selection = request.selection;
-        let output = match request.kind {
-            PendingKind::Picker(mode) => self.insert_entity(entity, &mode),
-            PendingKind::Create {
-                trigger,
-                uid,
-                content,
-            } => {
-                if trigger == "selection" || trigger == "@" {
-                    self.insert_entity(entity, "mention")
-                } else {
-                    if matches!(trigger.as_str(), "task" | "page")
-                        && uid.as_ref().and_then(|uid| self.content(uid)) != content.as_ref()
-                    {
-                        return vec![];
+        let mut output = self.batch_edit(TxKind::Host, |engine| {
+            let previous = engine.selection.clone();
+            engine.selection = request.selection;
+            let mut output = match request.kind {
+                PendingKind::Picker(mode) => engine.insert_entity(entity, &mode),
+                PendingKind::Create { trigger, uid, .. } => {
+                    if trigger == "selection" || trigger == "@" {
+                        engine.insert_entity(entity, "mention")
+                    } else {
+                        engine.complete_embed(uid, entity, &trigger)
                     }
-                    self.complete_embed(uid, entity, &trigger)
                 }
+                PendingKind::Markdown(_) => Vec::new(),
+            };
+            output.extend(engine.continue_after_block());
+            if !owns_selection && selection_exists(&engine.doc, &previous) {
+                engine.selection = previous;
+                engine.clamp_selection();
             }
-            PendingKind::Markdown(_) => Vec::new(),
-        };
+            output
+        });
+        if !owns_selection {
+            output.retain(|event| !matches!(event, EngineOutput::Focus { .. }));
+        } else if !output.is_empty() {
+            output.push(EngineOutput::Focus {
+                target: FocusTarget::Editor,
+            });
+        }
         self.finish_outputs(output)
     }
     fn complete_embed(
@@ -1636,6 +1817,43 @@ impl EditorEngine {
             TxKind::Host,
         ))
         .unwrap_or_else(|error| vec![error_output(error)])
+    }
+    /// Makes the next typed text carry the caret's marks except `kind`.
+    fn exclude_stored_mark(&mut self, kind: &str) {
+        let Some(range) = self.selection.text_range().filter(|r| r.is_collapsed()) else {
+            return;
+        };
+        let mut marks = self
+            .inline(&range.head.container)
+            .map(|nodes| text::marks_at(nodes, range.head.offset))
+            .unwrap_or_default();
+        marks.retain(|mark| mark.kind.0 != kind);
+        self.stored_marks = marks;
+        self.stored_marks_explicit = true;
+    }
+    /// A newly inserted block without text (an embed, image, file, bookmark
+    /// or divider) is not left selected, where the next keystroke would
+    /// replace it: writing continues in the paragraph below. Islands with
+    /// their own editing (a graph) keep the selection.
+    pub(crate) fn continue_after_block(&mut self) -> Vec<EngineOutput> {
+        match self.selection.clone() {
+            EditorSelection::Node(uid)
+                if self.content(&uid).is_some_and(|content| {
+                    matches!(
+                        content.kind.0.as_str(),
+                        "entity_embed"
+                            | "image"
+                            | "file"
+                            | "bookmark"
+                            | "divider"
+                            | "details_break"
+                    )
+                }) =>
+            {
+                commands::run(self, Command::FocusAfterBlock(uid))
+            }
+            _ => Vec::new(),
+        }
     }
     fn insert_entity(
         &mut self,
@@ -2274,4 +2492,42 @@ fn replacement_ops(before: &ComponentDocumentV2, after: &ComponentDocumentV2) ->
         });
     }
     ops
+}
+
+/// The order block types are offered in, from plain text to special blocks.
+const BLOCK_TYPE_ORDER: [&str; 12] = [
+    "paragraph",
+    "heading",
+    "bulleted_list_item",
+    "numbered_list_item",
+    "todo",
+    "toggle",
+    "quote",
+    "divider",
+    "callout",
+    "code_block",
+    "table",
+    "details",
+];
+/// Where block type `kind` is offered among the others (slash menu, Turn into).
+pub fn block_type_rank(kind: &str) -> usize {
+    BLOCK_TYPE_ORDER
+        .iter()
+        .position(|known| *known == kind)
+        .unwrap_or(BLOCK_TYPE_ORDER.len())
+}
+/// Within a group, slash items with equal match scores follow the order
+/// writers reach for them: text and headings first, then lists and blocks.
+fn slash_rank(item: &crate::SuggestionItem) -> (usize, u64) {
+    let kind = item
+        .data
+        .get("kind")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    let level = item
+        .data
+        .pointer("/attrs/level")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
+    (block_type_rank(kind), level)
 }

@@ -4,7 +4,7 @@ pub mod islands;
 pub mod media;
 pub mod tables;
 use super::{
-    EditorEngine, EngineOutput,
+    EditorEngine, EngineOutput, model,
     selection::{EditorSelection, TextRange, Uid},
     text::{DeleteUnit, Direction},
 };
@@ -205,8 +205,29 @@ pub fn run(engine: &mut EditorEngine, command: Command) -> Vec<EngineOutput> {
         Command::SetTransientAttrs { uid, attrs } => islands::transient(engine, uid, attrs),
         Command::SelectNode(uid) => blocks::select(engine, EditorSelection::Node(uid)),
         Command::RemoveNode(uid) => {
+            // A caret elsewhere stays where it is.
+            let kept = match &engine.selection {
+                EditorSelection::Text(range)
+                    if engine.block(&uid).is_some_and(|block| {
+                        [&range.anchor.container, &range.head.container]
+                            .iter()
+                            .all(|container| {
+                                engine
+                                    .container_owner(container)
+                                    .is_some_and(|owner| model::find(block, &owner).is_none())
+                            })
+                    }) =>
+                {
+                    Some(engine.selection.clone())
+                }
+                _ => None,
+            };
             engine.selection = EditorSelection::Node(uid);
-            blocks::run(engine, Command::DeleteBlocks)
+            let mut output = blocks::run(engine, Command::DeleteBlocks);
+            if let Some(kept) = kept {
+                output.extend(blocks::run(engine, Command::SetSelection(kept)));
+            }
+            output
         }
         Command::ReplaceNode { uid, nodes } => islands::replace(engine, uid, nodes),
         Command::SetCollapsed(uids) => islands::set_collapsed(engine, uids),

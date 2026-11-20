@@ -145,6 +145,24 @@ fn url_roles_distinguish_navigation_from_media_sources() {
 }
 
 #[test]
+fn typed_link_addresses_are_completed_without_changing_explicit_ones() {
+    for (typed, link) in [
+        ("example.com", "https://example.com"),
+        ("  docs.rs/dxeditor?x=1 ", "https://docs.rs/dxeditor?x=1"),
+        ("localhost:3000/a", "https://localhost:3000/a"),
+        ("ada@example.com", "mailto:ada@example.com"),
+        ("https://example.com", "https://example.com"),
+        ("mailto:ada@example.com", "mailto:ada@example.com"),
+        ("semantic:entity:1", "semantic:entity:1"),
+        ("/documents/1", "/documents/1"),
+        ("#heading", "#heading"),
+        ("notes", "notes"),
+    ] {
+        assert_eq!(dxeditor::normalize_link_url(typed), link, "{typed}");
+    }
+}
+
+#[test]
 fn catalog_fingerprint_is_deterministic_and_registration_is_checked() {
     fn custom_spec(id: &str) -> ComponentSpec {
         let mut spec = ComponentSpec::new(

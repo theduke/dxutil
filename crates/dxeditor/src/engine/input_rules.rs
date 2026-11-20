@@ -63,38 +63,13 @@ pub fn transaction(engine: &EditorEngine, enter: bool) -> Option<Transaction> {
     if enter || before.kind.0 == "code_block" {
         return None;
     }
-    for (delimiter, mark) in [
-        ("**", "bold"),
-        ("__", "bold"),
-        ("~~", "strike"),
-        ("`", "code"),
-        ("*", "italic"),
-        ("_", "italic"),
-    ] {
-        if !engine.profile.allows_mark(mark) || !engine.schema.allows_mark(mark) {
-            continue;
-        }
-        let Some(body) = prefix.strip_suffix(delimiter) else {
-            continue;
-        };
-        let Some(start_byte) = body.rfind(delimiter) else {
-            continue;
-        };
-        if start_byte > 0
-            && !body[..start_byte]
-                .chars()
-                .next_back()
-                .is_some_and(char::is_whitespace)
-        {
-            continue;
-        }
-        let value = &body[start_byte + delimiter.len()..];
-        if value.is_empty()
-            || value.starts_with(char::is_whitespace)
-            || value.ends_with(char::is_whitespace)
-        {
-            continue;
-        }
+    if let Some(MarkRule {
+        start_byte,
+        delimiter,
+        mark,
+    }) = mark_rule(engine, &prefix)
+    {
+        let body = &prefix[..prefix.len() - delimiter.len()];
         let start = body[..start_byte].chars().count();
         let delimiter_len = delimiter.chars().count();
         let mut inside = text::slice(
@@ -157,6 +132,62 @@ pub fn transaction(engine: &EditorEngine, enter: bool) -> Option<Transaction> {
     }
     None
 }
+/// An inline Markdown mark completed by the text before the caret.
+struct MarkRule {
+    /// Byte offset of the opening delimiter in the prefix.
+    start_byte: usize,
+    delimiter: &'static str,
+    mark: &'static str,
+}
+fn mark_rule(engine: &EditorEngine, prefix: &str) -> Option<MarkRule> {
+    for (delimiter, mark) in [
+        ("**", "bold"),
+        ("__", "bold"),
+        ("~~", "strike"),
+        ("`", "code"),
+        ("*", "italic"),
+        ("_", "italic"),
+    ] {
+        if !engine.profile.allows_mark(mark) || !engine.schema.allows_mark(mark) {
+            continue;
+        }
+        let Some(body) = prefix.strip_suffix(delimiter) else {
+            continue;
+        };
+        let Some(start_byte) = body.rfind(delimiter) else {
+            continue;
+        };
+        if start_byte > 0
+            && !body[..start_byte]
+                .chars()
+                .next_back()
+                .is_some_and(char::is_whitespace)
+        {
+            continue;
+        }
+        let value = &body[start_byte + delimiter.len()..];
+        if value.is_empty()
+            || value.starts_with(char::is_whitespace)
+            || value.ends_with(char::is_whitespace)
+        {
+            continue;
+        }
+        return Some(MarkRule {
+            start_byte,
+            delimiter,
+            mark,
+        });
+    }
+    None
+}
+/// The mark an inline rule would close at the caret, which text typed next
+/// must not continue (`**bold**` then " after" is plain).
+pub(crate) fn closing_mark(engine: &EditorEngine) -> Option<&'static str> {
+    let range = engine.selection.text_range().filter(|r| r.is_collapsed())?;
+    let nodes = engine.inline(&range.head.container)?;
+    let prefix = text::plain(&text::slice(nodes, 0, range.head.offset));
+    mark_rule(engine, &prefix).map(|rule| rule.mark)
+}
 fn prepared(
     engine: &EditorEngine,
     ops: Vec<Op>,
@@ -195,6 +226,11 @@ fn attrs(value: Value) -> AttributeMap {
     }
 }
 pub fn block_rule(prefix: &str, enter: bool) -> Option<(&'static str, AttributeMap)> {
+    // Three backticks start a code block at once (its language is picked on
+    // the block), so the code typed next is never taken for a language.
+    if prefix == "```" && !enter {
+        return Some(("code_block", attrs(json!({"wrap":false}))));
+    }
     if let Some(language) = prefix.strip_prefix("```") {
         let language = if enter {
             language
@@ -234,7 +270,15 @@ pub fn block_rule(prefix: &str, enter: bool) -> Option<(&'static str, AttributeM
         && number.chars().all(|c| c.is_ascii_digit())
         && let Ok(start) = number.parse::<u64>()
     {
-        return Some(("numbered_list_item", attrs(json!({"start":start}))));
+        // Lists start at one unless the writer typed another number.
+        return Some((
+            "numbered_list_item",
+            if start == 1 {
+                AttributeMap::new()
+            } else {
+                attrs(json!({ "start": start }))
+            },
+        ));
     }
     None
 }

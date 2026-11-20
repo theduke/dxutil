@@ -56,6 +56,12 @@ pub fn resolve(engine: &EditorEngine, key: &KeyChord) -> Option<KeyAction> {
             "Home" => return command(Command::SuggestionFirst),
             "End" => return command(Command::SuggestionLast),
             "Escape" => return command(Command::DismissSuggestion),
+            "Backspace" if let Some(query) = engine.manual_slash_query() => {
+                let mut query = query.to_owned();
+                query.pop();
+                return command(Command::SetSuggestionQuery(query));
+            }
+
             "Enter" if !key.shift && engine.suggestion.selected().is_some() => {
                 return command(Command::AcceptSuggestion);
             }
@@ -121,6 +127,12 @@ pub fn resolve(engine: &EditorEngine, key: &KeyChord) -> Option<KeyAction> {
             "ArrowUp" => return command(Command::FocusBeforeBlock(uid.clone())),
             _ => {}
         }
+    }
+    if matches!(engine.selection, EditorSelection::Cells { .. })
+        && bare
+        && matches!(key.key.as_str(), "Backspace" | "Delete")
+    {
+        return command(Command::Table(TableCommand::Clear));
     }
     if matches!(
         engine.selection,
@@ -277,15 +289,29 @@ pub fn resolve(engine: &EditorEngine, key: &KeyChord) -> Option<KeyAction> {
             _ => {}
         }
     }
+    if bare
+        && matches!(key.key.as_str(), "ArrowUp" | "ArrowDown")
+        && let Some(action) = table_vertical(engine, key.key == "ArrowDown")
+    {
+        return Some(action);
+    }
     if bare {
         match key.key.as_str() {
             "Tab" if engine.profile != Profile::Composer => {
                 let cell = matches!(&engine.selection, EditorSelection::Cells { .. })
                     || matches!(&engine.selection,EditorSelection::Text(range) if matches!(range.head.container,InlineContainerRef::Cell{..}));
+                let code = !key.shift
+                    && engine.selection.is_collapsed()
+                    && super::commands::blocks::current_uid(engine)
+                        .and_then(|uid| engine.content(&uid))
+                        .is_some_and(|content| content.kind.0 == "code_block");
                 return command(if cell {
                     Command::Table(TableCommand::Navigate {
                         backwards: key.shift,
                     })
+                } else if code {
+                    // Tab indents code rather than nesting the code block.
+                    Command::InsertText("\t".into())
                 } else if key.shift {
                     Command::Outdent
                 } else {
@@ -310,6 +336,50 @@ pub fn resolve(engine: &EditorEngine, key: &KeyChord) -> Option<KeyAction> {
         }
     }
     None
+}
+/// ArrowUp/ArrowDown in a table cell move to the cell above or below, leaving
+/// the table past its first or last row. Within a cell holding hard breaks the
+/// caret first moves between its lines.
+fn table_vertical(engine: &EditorEngine, down: bool) -> Option<KeyAction> {
+    let range = engine.selection.text_range().filter(|r| r.is_collapsed())?;
+    let InlineContainerRef::Cell { row, col } = &range.head.container else {
+        return None;
+    };
+    let text = super::text::plain(engine.inline(&range.head.container)?);
+    let (before, after) = text.split_at(
+        text.char_indices()
+            .nth(range.head.offset)
+            .map_or(text.len(), |(index, _)| index),
+    );
+    if (down && after.contains('\n')) || (!down && before.contains('\n')) {
+        return None;
+    }
+    let uid = super::commands::blocks::current_uid(engine)?;
+    let table = engine.content(&uid).filter(|node| node.kind.0 == "table")?;
+    let index = table
+        .content
+        .iter()
+        .position(|node| node.id.as_ref().is_some_and(|id| &id.0 == row))?;
+    let target = if down {
+        index + 1
+    } else {
+        match index.checked_sub(1) {
+            Some(target) => target,
+            None => return command(Command::FocusBeforeBlock(uid)),
+        }
+    };
+    let Some(target_row) = table.content.get(target) else {
+        return command(Command::FocusAfterBlock(uid));
+    };
+    let container = InlineContainerRef::Cell {
+        row: target_row.id.as_ref()?.0.clone(),
+        col: *col,
+    };
+    let length = super::text::len(engine.inline(&container)?);
+    command(Command::SetSelection(EditorSelection::caret(
+        container,
+        range.head.offset.min(length),
+    )))
 }
 fn turn_into(kind: &str, attrs: AttributeMap) -> Option<KeyAction> {
     command(Command::TurnInto {

@@ -13,10 +13,15 @@ pub struct Rect {
 pub struct Geometry {
     pub selection: Option<Rect>,
     pub caret: Option<Rect>,
+    /// The start of the trigger range, independent of its changing query.
+    pub suggestion_anchor: Option<Rect>,
     pub block: Option<Rect>,
+    /// The first line of the block's content, where its gutter controls align.
+    pub block_line: Option<Rect>,
     pub table: Option<Rect>,
     pub table_rows: Vec<Rect>,
     pub table_columns: Vec<Rect>,
+    pub hovered_cell: Option<(usize, usize)>,
     pub cell: Option<Rect>,
     pub viewport: Rect,
     pub scale_x: f64,
@@ -93,9 +98,17 @@ impl EditorUiState {
         } else {
             range
                 .and_then(|r| {
+                    // A text selection reports the marks of its first selected
+                    // character, so a selected link or bold word shows as such
+                    // whichever way it was selected.
+                    let offset = if r.anchor.container == r.head.container && !r.is_collapsed() {
+                        r.anchor.offset.min(r.head.offset) + 1
+                    } else {
+                        r.head.offset
+                    };
                     engine
                         .inline(&r.head.container)
-                        .map(|n| text::marks_at(n, r.head.offset))
+                        .map(|n| text::marks_at(n, offset))
                 })
                 .unwrap_or_default()
         };

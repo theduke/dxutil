@@ -87,13 +87,13 @@ test('slash filtering and keyboard acceptance keep editor focus', async ({ page 
   await expect(editor(page)).toBeFocused();
   await expect.poll(async () => list.evaluate(element => {
     const paragraph = document.querySelector('[data-content-kind=paragraph]')!;
+    // The menu stays by its trigger while the query is typed.
     const walker = document.createTreeWalker(paragraph, NodeFilter.SHOW_TEXT);
-    let text: Node | null = null;
-    while (walker.nextNode()) text = walker.currentNode;
+    walker.nextNode(); const text = walker.currentNode;
     const range = document.createRange();
-    range.setStart(text!, text!.textContent!.length); range.collapse(true);
-    const caret = range.getBoundingClientRect(), popup = element.getBoundingClientRect();
-    return Math.max(Math.abs(popup.left - caret.left), Math.abs(popup.top - caret.bottom));
+    range.setStart(text, 0); range.setEnd(text, 1);
+    const trigger = range.getBoundingClientRect(), popup = element.getBoundingClientRect();
+    return Math.max(Math.abs(popup.left - trigger.left), Math.abs(popup.top - trigger.bottom));
   })).toBeLessThan(24);
   await page.keyboard.press('ArrowDown'); await page.keyboard.press('ArrowUp'); await page.keyboard.press('Enter');
   await expect(editor(page).locator('[data-content-kind=heading]')).toHaveCount(1);
@@ -130,6 +130,19 @@ test('toggle disclosure controls children without persisting collapsed state', a
   expect((await state(page)).changes).toBe(0);
 });
 
+test('code language selection keeps native focus and preserves the code', async ({ page }) => {
+  await open(page, '/blocks?fixture=all');
+  const select = page.getByRole('combobox', { name: 'Code language' });
+  await select.focus();
+  await select.selectOption('rust');
+  await expect(select).toBeFocused();
+  await expect(select).toHaveValue('rust');
+  await expect(editor(page).locator('pre code')).toHaveText('code_block');
+  await select.press('Tab');
+  await expect(select).not.toBeFocused();
+  await expect(editor(page).locator('pre code')).toHaveText('code_block');
+});
+
 test('table Enter is inline, Tab from the last cell adds one row', async ({ page }) => {
   await open(page, '/blocks?fixture=table');
   const cells = editor(page).locator('td,th');
@@ -137,6 +150,39 @@ test('table Enter is inline, Tab from the last cell adds one row', async ({ page
   await expect(cells.last()).toContainText('more');
   await expect(editor(page).locator('tr')).toHaveCount(2);
   await page.keyboard.press('Tab'); await expect(editor(page).locator('tr')).toHaveCount(3);
+});
+
+test('cell drags clear their highlights on text click and replace only the selected cells', async ({ page }) => {
+  await open(page, '/blocks?fixture=table');
+  const cells = editor(page).locator('td,th');
+  const drag = async (from: number, to: number) => {
+    const start = (await cells.nth(from).boundingBox())!;
+    const end = (await cells.nth(to).boundingBox())!;
+    await page.mouse.move(start.x + 10, start.y + start.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(end.x + 20, end.y + end.height / 2, { steps: 12 });
+    await page.mouse.up();
+  };
+  await drag(0, 3);
+  const selected = editor(page).locator('td[data-selected],th[data-selected]');
+  await expect(selected).toHaveCount(4);
+  await editor(page).getByText('After table').click();
+  await expect(selected).toHaveCount(0);
+
+  for (const direction of [[0, 1], [1, 0]]) {
+    await drag(direction[0], direction[1]);
+    await expect(selected).toHaveCount(2);
+    await page.keyboard.press('Backspace');
+    await page.keyboard.type('X');
+    await expect(cells.nth(0)).toHaveText('X');
+    await expect(cells.nth(1)).toHaveText('');
+    await expect(cells.nth(2)).toHaveText('1,0');
+    await expect(cells.nth(3)).toHaveText('1,1');
+    await page.keyboard.press('ControlOrMeta+z');
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect(cells.nth(0)).toHaveText('0,0');
+    await expect(cells.nth(1)).toHaveText('0,1');
+  }
 });
 
 test('TSV paste grows tables in a single undo step', async ({ page }) => {

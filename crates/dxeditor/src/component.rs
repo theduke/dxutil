@@ -18,10 +18,10 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
-  border: 1px solid #cfd8e3;
+  border: 1px solid var(--dx-border, var(--semantic-color-border, #cfd8e3));
   border-radius: 8px;
-  background: #ffffff;
-  color: #17202a;
+  background: var(--dx-surface, var(--semantic-color-surface-1, #ffffff));
+  color: var(--dx-text, var(--semantic-color-text, #17202a));
 }
 
 .dxeditor__toolbar,
@@ -31,11 +31,11 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
   align-items: center;
   gap: 6px;
   padding: 8px;
-  background: #f6f8fa;
+  background: var(--dx-surface-muted, var(--semantic-color-surface-2, #f6f8fa));
 }
 
 .dxeditor__toolbar {
-  border-bottom: 1px solid #dfe5ec;
+  border-bottom: 1px solid var(--dx-border, var(--semantic-color-border, #dfe5ec));
 }
 
 .dxeditor__toolbar-group {
@@ -43,7 +43,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
   flex-wrap: wrap;
   gap: 4px;
   padding-right: 8px;
-  border-right: 1px solid #dfe5ec;
+  border-right: 1px solid var(--dx-border, var(--semantic-color-border, #dfe5ec));
 }
 
 .dxeditor__toolbar-group:last-child {
@@ -53,10 +53,10 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 .dxeditor__button {
   min-width: 32px;
   min-height: 30px;
-  border: 1px solid #cfd8e3;
+  border: 1px solid var(--dx-border, var(--semantic-color-border, #cfd8e3));
   border-radius: 6px;
-  background: #ffffff;
-  color: #17202a;
+  background: var(--dx-surface, var(--semantic-color-surface-1, #ffffff));
+  color: var(--dx-text, var(--semantic-color-text, #17202a));
   padding: 4px 8px;
   font: inherit;
   font-size: 12px;
@@ -66,8 +66,8 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 }
 
 .dxeditor__button:hover {
-  border-color: #176b87;
-  color: #176b87;
+  border-color: var(--dx-accent, var(--semantic-color-primary, #176b87));
+  color: var(--dx-accent, var(--semantic-color-primary, #176b87));
 }
 
 .dxeditor__button:disabled {
@@ -81,7 +81,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
   gap: 2px;
   min-height: 260px;
   padding: 22px 28px;
-  background: #ffffff;
+  background: var(--dx-surface, var(--semantic-color-surface-1, #ffffff));
 }
 
 .dxeditor__block {
@@ -101,7 +101,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 }
 
 .dxeditor__block:focus {
-  box-shadow: inset 3px 0 0 #176b87;
+  box-shadow: inset 3px 0 0 var(--dx-accent, var(--semantic-color-primary, #176b87));
   padding-left: 8px;
 }
 
@@ -119,14 +119,14 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 }
 
 .dxeditor__block[data-component="quote"] {
-  border-left: 3px solid #9bb5c1;
+  border-left: 3px solid var(--dx-border, var(--semantic-color-border, #9bb5c1));
   border-radius: 0 4px 4px 0;
-  color: #435367;
+  color: var(--dx-text-muted, var(--semantic-color-text-muted, #435367));
   padding-left: 12px;
 }
 
 .dxeditor__block[data-component="code"] {
-  background: #f6f8fa;
+  background: var(--dx-surface-muted, var(--semantic-color-surface-2, #f6f8fa));
   border-radius: 4px;
   padding: 8px 10px;
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
@@ -135,7 +135,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 
 .dxeditor__inline-code {
   border-radius: 4px;
-  background: #eef2f6;
+  background: var(--dx-surface-muted, var(--semantic-color-surface-2, #eef2f6));
   padding: 0 4px;
   font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
   font-size: 0.92em;
@@ -143,8 +143,8 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 
 .dxeditor__mention {
   border-radius: 4px;
-  background: #e9f2f5;
-  color: #176b87;
+  background: color-mix(in srgb, var(--dx-accent, var(--semantic-color-primary, #176b87)) 12%, transparent);
+  color: var(--dx-accent, var(--semantic-color-primary, #176b87));
   padding: 0 4px;
 }
 
@@ -152,13 +152,13 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
   height: 1px;
   margin: 10px 0;
   border: 0;
-  background: #cfd8e3;
+  background: var(--dx-border, var(--semantic-color-border, #cfd8e3));
 }
 
 .dxeditor__status {
   justify-content: space-between;
-  border-top: 1px solid #dfe5ec;
-  color: #617084;
+  border-top: 1px solid var(--dx-border, var(--semantic-color-border, #dfe5ec));
+  color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084));
   font-size: 12px;
 }
 
@@ -176,7 +176,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
   gap: 4px;
   min-height: 38px;
   padding: 4px 8px;
-  color: #617084;
+  color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084));
 }
 
 .dxeditor__editor-actions-status {
@@ -277,15 +277,15 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 
 .dxeditor-engine__content blockquote {
   margin-left: 0;
-  border-left: 3px solid #9bb5c1;
+  border-left: 3px solid var(--dx-border, var(--semantic-color-border, #9bb5c1));
   padding-left: 12px;
-  color: #435367;
+  color: var(--dx-text-muted, var(--semantic-color-text-muted, #435367));
 }
 
 .dxeditor-engine__content pre {
   overflow-x: auto;
   border-radius: 6px;
-  background: #f6f8fa;
+  background: var(--dx-surface-muted, var(--semantic-color-surface-2, #f6f8fa));
   padding: 12px;
 }
 
@@ -299,7 +299,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 .dxeditor-engine__content td,
 .dxeditor-engine__content th {
   min-width: 96px;
-  border: 1px solid #cfd8e3;
+  border: 1px solid var(--dx-border, var(--semantic-color-border, #cfd8e3));
   padding: 6px 8px;
   vertical-align: top;
 }
@@ -320,8 +320,8 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 
          .dxeditor-engine__mention {
   border-radius: 4px;
-  background: #e9f2f5;
-  color: #176b87;
+  background: color-mix(in srgb, var(--dx-accent, var(--semantic-color-primary, #176b87)) 12%, transparent);
+  color: var(--dx-accent, var(--semantic-color-primary, #176b87));
   padding: 1px 4px;
          }
 
@@ -334,7 +334,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
          }
 
 .dxeditor-engine__opaque {
-  border: 1px dashed #a8b4c2;
+  border: 1px dashed var(--dx-border, var(--semantic-color-border, #a8b4c2));
   white-space: pre-wrap;
 }
 
@@ -350,9 +350,9 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
   display: flex;
   gap: 2px;
   max-width: min(520px, calc(100vw - 24px));
-  border: 1px solid #d8dee7;
+  border: 1px solid var(--dx-border, var(--semantic-color-border, #d8dee7));
   border-radius: 7px;
-  background: #fff;
+  background: var(--dx-surface, var(--semantic-color-surface-1, #fff));
   box-shadow: 0 6px 24px rgb(23 32 42 / 16%);
   padding: 4px;
   pointer-events: auto;
@@ -377,12 +377,12 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 .dxeditor-engine__button:hover,
 .dxeditor-engine__button:focus-visible,
 .dxeditor-engine__button[role="option"][aria-selected="true"] {
-  background: #eef2f6;
+  background: var(--dx-surface-muted, var(--semantic-color-surface-2, #eef2f6));
   outline: 2px solid transparent;
 }
 
 .dxeditor-engine__button:disabled {
-  color: #a8b4c2;
+  color: var(--dx-text-muted, var(--semantic-color-text-muted, #a8b4c2));
   cursor: default;
 }
 
@@ -411,13 +411,13 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 .dxeditor-engine__link-popover label {
   display: grid;
   gap: 4px;
-  color: #435367;
+  color: var(--dx-text-muted, var(--semantic-color-text-muted, #435367));
   font-size: 12px;
 }
 
 .dxeditor-engine__link-popover input {
   min-height: 34px;
-  border: 1px solid #a8b4c2;
+  border: 1px solid var(--dx-border, var(--semantic-color-border, #a8b4c2));
   border-radius: 5px;
   padding: 4px 8px;
   font: inherit;
@@ -437,7 +437,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 
          .dxeditor-engine__entity-popover > input {
            min-height: 36px;
-           border: 1px solid #a8b4c2;
+           border: 1px solid var(--dx-border, var(--semantic-color-border, #a8b4c2));
            border-radius: 5px;
            padding: 5px 8px;
            font: inherit;
@@ -461,7 +461,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
          }
 
          .dxeditor-engine__entity-preview-detail {
-           color: #617084;
+           color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084));
            font-size: 12px;
          }
 
@@ -474,7 +474,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
          }
 
          .dxeditor-engine__entity-preview dt {
-           color: #617084;
+           color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084));
          }
 
          .dxeditor-engine__entity-preview dd {
@@ -495,12 +495,12 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
            display: grid;
            width: min(320px, calc(100vw - 24px));
            gap: 4px;
-           border: 1px solid #d8dee7;
+           border: 1px solid var(--dx-border, var(--semantic-color-border, #d8dee7));
            border-radius: 7px;
-           background: #fff;
+           background: var(--dx-surface, var(--semantic-color-surface-1, #fff));
            box-shadow: 0 6px 24px rgb(23 32 42 / 16%);
            padding: 10px 12px;
-           color: #17202a;
+           color: var(--dx-text, var(--semantic-color-text, #17202a));
          }
 
          .dxeditor__read-only-entity-preview dl {
@@ -517,7 +517,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 
 .dxeditor-engine__field-error {
   min-height: 1em;
-  color: #b42318;
+  color: var(--semantic-color-danger, #b42318);
   font-size: 12px;
 }
 
@@ -577,8 +577,8 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
   position: absolute;
   z-index: 2;
   box-sizing: border-box;
-  border: 1px solid #d8dee7;
-  background: #fff;
+  border: 1px solid var(--dx-border, var(--semantic-color-border, #d8dee7));
+  background: var(--dx-surface, var(--semantic-color-surface-1, #fff));
   box-shadow: 0 2px 8px rgb(23 32 42 / 12%);
   pointer-events: auto;
 }
@@ -608,11 +608,11 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 }
 
 .dxeditor-engine__table-row-handle[data-drop-position="before"] {
-  border-top: 3px solid #176b87;
+  border-top: 3px solid var(--dx-accent, var(--semantic-color-primary, #176b87));
 }
 
 .dxeditor-engine__table-row-handle[data-drop-position="after"] {
-  border-bottom: 3px solid #176b87;
+  border-bottom: 3px solid var(--dx-accent, var(--semantic-color-primary, #176b87));
 }
 
 .dxeditor-engine__table-row-menu .dxeditor-engine__button {
@@ -620,7 +620,7 @@ pub(crate) const DXEDITOR_STYLE: &str = r#"
 }
 
 .dxeditor__error {
-  border: 1px solid #b42318;
+  border: 1px solid var(--semantic-color-danger, #b42318);
   border-radius: 6px;
   background: #fff5f4;
   padding: 12px;

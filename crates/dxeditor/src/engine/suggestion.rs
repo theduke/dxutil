@@ -19,7 +19,12 @@ pub struct SuggestionState {
 }
 impl SuggestionState {
     pub fn update(&mut self, next: Option<TriggerMatch>) -> bool {
-        if self.dismissed.as_ref() != next.as_ref() {
+        // A dismissed trigger stays dismissed while its query is typed on.
+        let same_trigger = |a: &TriggerMatch, b: &TriggerMatch| {
+            a.trigger == b.trigger && a.range.anchor == b.range.anchor && a.query == b.query
+        };
+        if !matches!((&self.dismissed, &next), (Some(dismissed), Some(next)) if same_trigger(dismissed, next))
+        {
             self.dismissed = None;
         }
         let next = if self.dismissed.is_some() { None } else { next };

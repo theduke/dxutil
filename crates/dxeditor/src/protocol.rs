@@ -54,6 +54,10 @@ pub enum EngineEvent {
     FilePickerRequest {
         uid: String,
         accept: String,
+        /// The block was just inserted for this file: a host may remove it
+        /// when the picker is dismissed without one.
+        #[serde(default)]
+        placeholder: bool,
     },
     MediaOpen {
         uid: String,

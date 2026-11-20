@@ -210,6 +210,17 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         let Some(key) = event.dyn_ref::<KeyboardEvent>() else {
             return;
         };
+        // Form controls inside the content (a code block's language picker)
+        // handle their own keys.
+        if target_element(&event).is_some_and(|target| {
+            matches!(
+                target.tag_name().as_str(),
+                "SELECT" | "INPUT" | "TEXTAREA" | "BUTTON"
+            )
+        }) && !inside_island(&event, &host.borrow().root)
+        {
+            return;
+        }
         let root = host.borrow().root.clone();
         if inside_island(&event, &root) {
             if key.key() == "Escape" {
@@ -358,8 +369,21 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         {
             event.prevent_default();
             if !host.borrow().engine.borrow().read_only() {
-                DomHost::run(host, Command::SetSelection(EditorSelection::Node(uid)));
+                // Ticking a to-do leaves the selection where it was rather
+                // than selecting the whole block.
+                let previous = host.borrow().engine.borrow().selection().clone();
+                DomHost::run(
+                    host,
+                    Command::SetSelection(EditorSelection::Node(uid.clone())),
+                );
                 DomHost::run(host, Command::ToggleChecked);
+                let restored = if matches!(previous, EditorSelection::Text(_)) {
+                    previous
+                } else {
+                    restore_caret_at_end(host, uid)
+                };
+                DomHost::run(host, Command::SetSelection(restored));
+                DomHost::run(host, Command::Focus);
             } else {
                 DomHost::publish(
                     host,
@@ -380,6 +404,8 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         {
             event.prevent_default();
             DomHost::run(host, Command::ToggleCollapsed(uid));
+            // Keyboard focus stays in the text rather than on the arrow.
+            DomHost::run(host, Command::Focus);
             return;
         }
         if let Some(chip) = target.closest("[data-composer-chip]").ok().flatten() {
@@ -458,7 +484,13 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
                 }
             } else if let Some(win) = web_sys::window() {
                 event.prevent_default();
-                if crate::is_safe_url(&href) {
+                // While editing, a plain click places the caret in the link (its
+                // popover offers Open); a modified click opens it directly.
+                let modified = event
+                    .dyn_ref::<web_sys::MouseEvent>()
+                    .is_some_and(|mouse| mouse.ctrl_key() || mouse.meta_key());
+                let editable = !host.borrow().engine.borrow().read_only();
+                if crate::is_safe_url(&href) && (modified || !editable) {
                     let _ = win.open_with_url_and_target(&href, "_blank");
                 }
             }
@@ -468,27 +500,62 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             if let Some(block) = target.closest(".dx-block[data-uid]").ok().flatten() {
                 if let Some(uid) = block.get_attribute("data-uid") {
                     DomHost::run(host, Command::SelectNode(uid.clone()));
-                    let media = crate::engine::model::content(
-                        host.borrow().engine.borrow().document(),
-                        &uid,
-                    )
-                    .and_then(|n| n.attrs.get("media"))
-                    .and_then(|v| v.as_object())
-                    .cloned();
-                    DomHost::publish(
-                        host,
-                        vec![EngineOutput::Request(crate::EngineEvent::MediaOpen {
-                            uid,
-                            media,
-                        })],
-                    );
+                    // While editing, a click selects the image for its toolbar;
+                    // a double click (or any click when reading) opens it.
+                    if host.borrow().engine.borrow().read_only() {
+                        open_media(host, uid);
+                    }
                 }
             }
         }
     })?;
+    DomHost::listen(host, root.as_ref(), "dblclick", false, |host, event| {
+        if inside_island(&event, &host.borrow().root) {
+            return;
+        }
+        if let Some(uid) = target_element(&event)
+            .filter(|target| target.tag_name() == "IMG")
+            .and_then(|target| target.closest(".dx-block[data-uid]").ok().flatten())
+            .and_then(|block| block.get_attribute("data-uid"))
+        {
+            event.prevent_default();
+            open_media(host, uid);
+        }
+    })?;
+    DomHost::listen(host, root.as_ref(), "change", false, |host, event| {
+        if inside_island(&event, &host.borrow().root) {
+            return;
+        }
+        let Some(select) = target_element(&event)
+            .and_then(|target| target.dyn_into::<web_sys::HtmlSelectElement>().ok())
+        else {
+            return;
+        };
+        let Some(uid) = select.get_attribute("data-code-language") else {
+            return;
+        };
+        let value = select.value();
+        let mut attrs = crate::AttributeMap::new();
+        attrs.insert(
+            "language".into(),
+            if value.is_empty() {
+                serde_json::Value::Null
+            } else {
+                serde_json::Value::String(value)
+            },
+        );
+        DomHost::run(
+            host,
+            Command::UpdateNodeAttrs {
+                uid,
+                attrs,
+                add_to_history: true,
+            },
+        );
+    })?;
     DomHost::listen(host, root.as_ref(), "pointerdown", false, |host, event| {
-        if let Some(cell) = cell_at(&event) {
-            host.borrow_mut().cell_drag = Some(cell);
+        if !inside_island(&event, &host.borrow().root) {
+            host.borrow_mut().cell_drag = cell_at(&event);
         }
         if let Some(target) = target_element(&event) {
             if let Some(content) = target
@@ -590,12 +657,14 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         if !host.borrow().drag_uids.is_empty() {
             return;
         }
+        let inside = inside_island(&event, &host.borrow().root);
+        let cell = if inside { None } else { cell_at(&event) };
         let anchor = host.borrow().cell_drag.clone();
         if event
             .dyn_ref::<web_sys::MouseEvent>()
             .is_some_and(|e| e.buttons() == 1)
         {
-            if let (Some((table, anchor)), Some((target, head))) = (anchor, cell_at(&event)) {
+            if let (Some((table, anchor)), Some((target, head))) = (anchor, cell.clone()) {
                 if table == target && anchor != head {
                     event.prevent_default();
                     DomHost::run(
@@ -610,14 +679,136 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
                 }
             }
         }
-        let uid = (!inside_island(&event, &host.borrow().root))
-            .then(|| target_element(&event))
-            .flatten()
+        // Inside an island (a card, a graph) the island's own block is hovered.
+        let uid = target_element(&event)
+            .map(|target| {
+                target
+                    .closest(".dxeditor-island")
+                    .ok()
+                    .flatten()
+                    .unwrap_or(target)
+            })
             .and_then(|e| e.closest(".dx-block[data-uid]").ok().flatten())
             .and_then(|e| e.get_attribute("data-uid"));
+        let cell_changed = {
+            let mut host = host.borrow_mut();
+            let changed = host.hovered_cell != cell;
+            host.hovered_cell = cell;
+            changed
+        };
         let output = host.borrow().engine.borrow_mut().set_hover_block(uid);
-        DomHost::publish(host, output);
+        if cell_changed || !output.is_empty() {
+            DomHost::publish(host, output);
+        }
     })?;
+    // A click below the last block continues writing there: at the end of a
+    // text block, or in a new paragraph after a non-text block (an embed).
+    DomHost::listen(
+        host,
+        focus_owner.as_ref(),
+        "pointerdown",
+        false,
+        |host, event| {
+            let root = host.borrow().root.clone();
+            let Some(mouse) = event.dyn_ref::<web_sys::MouseEvent>() else {
+                return;
+            };
+            if mouse.button() != 0
+                || host.borrow().engine.borrow().read_only()
+                || !host.borrow().engine.borrow().profile().has_blocks()
+                || target_element(&event).is_some_and(|target| {
+                    target != root && root.contains(Some(&target)) || target.closest(".dxeditor__overlays,.dxeditor-engine__surface,.dxeditor-gutter,.dxeditor-table-edges").ok().flatten().is_some()
+                })
+            {
+                return;
+            }
+            let Some(last) = root
+                .query_selector(":scope > .dx-block-group > .dx-block:last-child")
+                .ok()
+                .flatten()
+            else {
+                return;
+            };
+            let bounds = last.get_bounding_client_rect();
+            let y = f64::from(mouse.client_y());
+            let x = f64::from(mouse.client_x());
+            if y <= bounds.bottom() || x < bounds.left() || x > bounds.right() {
+                return;
+            }
+            let Some(uid) = last.get_attribute("data-uid") else {
+                return;
+            };
+            event.prevent_default();
+            // The end of a text block, else a new paragraph after the block.
+            let text_end = {
+                let host = host.borrow();
+                let engine = host.engine.borrow();
+                let container = crate::engine::InlineContainerRef::Block(uid.clone());
+                engine
+                    .content(&uid)
+                    .filter(|content| crate::engine::model::is_text_kind(&content.kind.0))
+                    .map(|_| {
+                        let length = engine
+                            .inline(&container)
+                            .map_or(0, |nodes| crate::engine::text::len(nodes));
+                        EditorSelection::caret(container, length)
+                    })
+            };
+            match text_end {
+                Some(caret) => {
+                    DomHost::run(host, Command::SetSelection(caret));
+                    DomHost::run(host, Command::Focus);
+                }
+                None => DomHost::run(host, Command::FocusAfterBlock(uid)),
+            }
+        },
+    )?;
+    // The gutter controls sit in the editor's margin, outside the content.
+    // Moving along that margin hovers the block at the pointer's height.
+    DomHost::listen(
+        host,
+        focus_owner.as_ref(),
+        "pointermove",
+        false,
+        |host, event| {
+            let root = host.borrow().root.clone();
+            if !host.borrow().drag_uids.is_empty()
+                || target_element(&event).is_some_and(|target| {
+                    root.contains(Some(&target))
+                        || target
+                            .closest(".dxeditor__overlays,.dxeditor-engine__surface")
+                            .ok()
+                            .flatten()
+                            .is_some()
+                })
+            {
+                return;
+            }
+            let Some(mouse) = event.dyn_ref::<web_sys::MouseEvent>() else {
+                return;
+            };
+            if mouse.buttons() != 0 {
+                return;
+            }
+            let bounds = root.get_bounding_client_rect();
+            let y = f64::from(mouse.client_y());
+            if y < bounds.top() || y > bounds.bottom() {
+                return;
+            }
+            let Some(document) = root.owner_document() else {
+                return;
+            };
+            let uid = document
+                .element_from_point((bounds.left() + bounds.width() / 2.) as f32, y as f32)
+                .filter(|element| root.contains(Some(element)))
+                .and_then(|element| element.closest(".dx-block[data-uid]").ok().flatten())
+                .and_then(|block| block.get_attribute("data-uid"));
+            if uid.is_some() {
+                let output = host.borrow().engine.borrow_mut().set_hover_block(uid);
+                DomHost::publish(host, output);
+            }
+        },
+    )?;
     DomHost::listen(
         host,
         focus_owner.as_ref(),
@@ -627,6 +818,7 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             if !host.borrow().drag_uids.is_empty() {
                 return;
             }
+            host.borrow_mut().hovered_cell = None;
             let output = host.borrow().engine.borrow_mut().set_hover_block(None);
             DomHost::publish(host, output);
         },
@@ -692,9 +884,37 @@ fn cell_at(event: &web_sys::Event) -> Option<(String, (usize, usize))> {
         .closest(".dx-block[data-uid]")
         .ok()??
         .get_attribute("data-uid")?;
-    let rows = table.query_selector_all("tr").ok()?;
-    let r = (0..rows.length()).find(|&i| rows.item(i).as_ref() == Some(row.as_ref()))?;
-    let cols = row.children();
-    let c = (0..cols.length()).find(|&i| cols.item(i).as_ref() == Some(&cell))?;
-    Some((uid, (r as usize, c as usize)))
+    let r = row.get_attribute("data-table-row-index")?.parse().ok()?;
+    let c = cell
+        .get_attribute("data-table-column-index")?
+        .parse()
+        .ok()?;
+    Some((uid, (r, c)))
+}
+
+/// A caret at the end of block `uid`'s text.
+fn restore_caret_at_end(host: &Host, uid: String) -> EditorSelection {
+    let container = crate::engine::InlineContainerRef::Block(uid);
+    let length = host
+        .borrow()
+        .engine
+        .borrow()
+        .inline(&container)
+        .map_or(0, |nodes| crate::engine::text::len(nodes));
+    EditorSelection::caret(container, length)
+}
+
+/// Asks the host to show block `uid`'s media.
+fn open_media(host: &Host, uid: String) {
+    let media = crate::engine::model::content(host.borrow().engine.borrow().document(), &uid)
+        .and_then(|n| n.attrs.get("media"))
+        .and_then(|v| v.as_object())
+        .cloned();
+    DomHost::publish(
+        host,
+        vec![EngineOutput::Request(crate::EngineEvent::MediaOpen {
+            uid,
+            media,
+        })],
+    );
 }

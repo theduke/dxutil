@@ -1223,9 +1223,9 @@ fn repeated_typing_targets_toggle_text_and_image_caption() {
                     .query_selector("button[data-toggle]")
                     .unwrap()
                     .unwrap()
-                    .text_content()
+                    .get_attribute("aria-expanded")
                     .as_deref(),
-                Some("▾")
+                Some("true")
             );
         } else {
             assert_eq!(
