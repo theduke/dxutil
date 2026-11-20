@@ -1850,7 +1850,7 @@ impl EditorEngine {
                     )
                 }) =>
             {
-                commands::run(self, Command::FocusAfterBlock(uid))
+                commands::blocks::focus_after(self, uid, true)
             }
             _ => Vec::new(),
         }

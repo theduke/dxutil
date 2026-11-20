@@ -623,47 +623,74 @@ fn host_picker_tracks_original_uid_when_other_blocks_inserted() {
 }
 #[test]
 fn picked_embed_leaves_the_caret_below_it() {
-    let mut e = engine("");
-    let id = uid(&e);
-    e.run(Command::SetSelection(EditorSelection::caret(
-        InlineContainerRef::Block(id),
-        0,
-    )));
-    e.request_entity_picker("embed".into());
-    let generation = e.suggestion().generation;
-    e.set_suggestion_items(
-        generation,
-        vec![dxeditor::SuggestionItem {
-            id: "ada".into(),
-            label: "Ada".into(),
-            description: None,
-            icon: None,
-            data: serde_json::json!({"entity":{"id":"ada","label":"Ada"}}),
-            priority: 0,
-        }],
-    );
-    e.run(Command::AcceptSuggestion);
-    let order = model::block_order(e.document());
-    assert_eq!(
-        model::content(e.document(), &order[0]).unwrap().kind.0,
-        "entity_embed"
-    );
-    assert_eq!(
-        e.selection(),
-        &EditorSelection::caret(InlineContainerRef::Block(order[1].clone()), 0)
-    );
-    type_text(&mut e, "x");
-    assert_eq!(
-        model::content(e.document(), &order[0]).unwrap().kind.0,
-        "entity_embed"
-    );
-    e.run(Command::Undo);
-    e.run(Command::Undo);
-    assert_eq!(
-        model::block_order(e.document()).len(),
-        1,
-        "one undo step per action"
-    );
+    for parent_kind in [None, Some("todo"), Some("toggle")] {
+        let paragraph = model::paragraph();
+        let id = paragraph.id.as_ref().unwrap().0.clone();
+        let mut quote = ComponentNode::new("quote");
+        quote.content.push(ComponentNode::text("Keep this quote"));
+        let quote = model::block_node(quote);
+        let quote_id = quote.id.as_ref().unwrap().0.clone();
+        let children = vec![paragraph, quote];
+        let (blocks, parent) = if let Some(kind) = parent_kind {
+            let mut parent = model::block_node(ComponentNode::new(kind));
+            let parent_id = parent.id.as_ref().unwrap().0.clone();
+            parent
+                .content
+                .push(ComponentNode::container("block_children", None, children));
+            (vec![parent], Some(parent_id))
+        } else {
+            (children, None)
+        };
+        let mut e = EditorEngine::new(
+            model::document(blocks),
+            &EditorCatalog::block_document(),
+            Profile::BlockDocument,
+            EngineOptions::default(),
+        )
+        .unwrap();
+        let before = e.document().clone();
+        e.run(Command::SetSelection(EditorSelection::caret(
+            InlineContainerRef::Block(id),
+            0,
+        )));
+        e.request_entity_picker("embed".into());
+        let generation = e.suggestion().generation;
+        e.set_suggestion_items(
+            generation,
+            vec![dxeditor::SuggestionItem {
+                id: "ada".into(),
+                label: "Ada".into(),
+                description: None,
+                icon: None,
+                data: serde_json::json!({"entity":{"id":"ada","label":"Ada"}}),
+                priority: 0,
+            }],
+        );
+        e.run(Command::AcceptSuggestion);
+        let siblings = model::children(e.document(), parent.as_deref()).unwrap();
+        let embed = siblings[0].clone();
+        let caret = siblings[1].id.as_ref().unwrap().0.clone();
+        assert_eq!(
+            e.selection(),
+            &EditorSelection::caret(InlineContainerRef::Block(caret.clone()), 0)
+        );
+        type_text(&mut e, "x");
+        let siblings = model::children(e.document(), parent.as_deref()).unwrap();
+        assert_eq!(siblings[0], embed);
+        assert_eq!(
+            model::content(e.document(), &caret).unwrap().text_content(),
+            "x"
+        );
+        assert_eq!(
+            model::content(e.document(), &quote_id)
+                .unwrap()
+                .text_content(),
+            "Keep this quote"
+        );
+        e.run(Command::Undo);
+        e.run(Command::Undo);
+        assert_eq!(e.document(), &before, "{parent_kind:?}");
+    }
 }
 #[test]
 fn inline_entity_picker_preserves_selected_text_for_link_mode() {

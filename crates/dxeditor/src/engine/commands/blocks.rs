@@ -247,7 +247,7 @@ pub fn run(e: &mut EditorEngine, cmd: Command) -> Vec<EngineOutput> {
         Command::Focus => vec![EngineOutput::Focus {
             target: FocusTarget::Editor,
         }],
-        Command::FocusAfterBlock(uid) => focus_after(e, uid),
+        Command::FocusAfterBlock(uid) => focus_after(e, uid, false),
         Command::FocusBeforeBlock(uid) => focus_before(e, uid),
         _ => vec![],
     }
@@ -1350,20 +1350,27 @@ fn edit_selected(e: &mut EditorEngine) -> Vec<EngineOutput> {
             target: FocusTarget::Island(uid),
         }]
     } else {
-        focus_after(e, uid)
+        focus_after(e, uid, false)
     }
 }
-fn focus_after(e: &mut EditorEngine, uid: Uid) -> Vec<EngineOutput> {
+pub(crate) fn focus_after(
+    e: &mut EditorEngine,
+    uid: Uid,
+    paragraph_only: bool,
+) -> Vec<EngineOutput> {
     let Some((parent, index)) = e.location(&uid) else {
         return vec![];
     };
     if let Some(next) = model::children(&e.doc, parent.as_deref())
         .and_then(|siblings| siblings.get(index + 1))
         .filter(|block| {
-            block
-                .content
-                .first()
-                .is_some_and(|content| model::is_text_kind(&content.kind.0))
+            block.content.first().is_some_and(|content| {
+                if paragraph_only {
+                    content.kind.0 == "paragraph"
+                } else {
+                    model::is_text_kind(&content.kind.0)
+                }
+            })
         })
         .and_then(|block| block.id.as_ref())
     {
