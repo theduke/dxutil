@@ -605,7 +605,7 @@ fn split_block(e: &mut EditorEngine) -> Vec<EngineOutput> {
     }
     // Enter in an image caption continues below the image.
     if let InlineContainerRef::Caption(uid) = c {
-        return focus_after(e, uid);
+        return focus_after(e, uid, false);
     }
     let Some(uid) = current_uid(e) else {
         return vec![];

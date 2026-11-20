@@ -632,7 +632,11 @@ fn picked_embed_leaves_the_caret_below_it() {
         let quote_id = quote.id.as_ref().unwrap().0.clone();
         let children = vec![paragraph, quote];
         let (blocks, parent) = if let Some(kind) = parent_kind {
-            let mut parent = model::block_node(ComponentNode::new(kind));
+            let mut content = ComponentNode::new(kind);
+            if kind == "todo" {
+                content.attrs.insert("checked".into(), true.into());
+            }
+            let mut parent = model::block_node(content);
             let parent_id = parent.id.as_ref().unwrap().0.clone();
             parent
                 .content

@@ -17,6 +17,13 @@ use dxutil::{time::now_ms, web::EventListener};
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::{JsCast, JsValue, closure::Closure};
 use web_sys::{Element, Event, MutationObserver, MutationObserverInit};
+fn is_form_control(element: &Element) -> bool {
+    matches!(
+        element.tag_name().as_str(),
+        "SELECT" | "INPUT" | "TEXTAREA" | "BUTTON"
+    )
+}
+
 pub type Host = Rc<RefCell<DomHost>>;
 pub struct DomHost {
     pub root: Element,
@@ -518,9 +525,11 @@ impl DomHost {
         // nested editor owns focus. Its retained selection must not take over
         // the browser's single selection (and with it keyboard focus).
         let owns_selection = self.root.owner_document().is_some_and(|document| {
-            document
-                .active_element()
-                .is_none_or(|active| active.tag_name() == "BODY" || self.owns_focus(&active))
+            document.active_element().is_none_or(|active| {
+                active.tag_name() == "BODY"
+                    || (self.owns_focus(&active)
+                        && !(self.root.contains(Some(&active)) && is_form_control(&active)))
+            })
         });
         if self.composing.is_none()
             && owns_selection

@@ -1,4 +1,6 @@
-use super::{DomHost, Host, inside_island, mapping, selection_sync, target_element};
+use super::{
+    DomHost, Host, inside_island, is_form_control, mapping, selection_sync, target_element,
+};
 use crate::engine::{
     Command, EditorSelection, EngineInput, EngineOutput, RenderPlan, TextPoint, TextRange,
     input_types::{self, InputDisposition},
@@ -72,7 +74,9 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
     let doc = root.owner_document().unwrap();
     let window = web_sys::window().unwrap();
     DomHost::listen(host, root.as_ref(), "beforeinput", false, |host, event| {
-        if inside_island(&event, &host.borrow().root) {
+        if inside_island(&event, &host.borrow().root)
+            || target_element(&event).as_ref().is_some_and(is_form_control)
+        {
             return;
         }
         let Some(input) = event.dyn_ref::<InputEvent>() else {
@@ -212,12 +216,8 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         };
         // Form controls inside the content (a code block's language picker)
         // handle their own keys.
-        if target_element(&event).is_some_and(|target| {
-            matches!(
-                target.tag_name().as_str(),
-                "SELECT" | "INPUT" | "TEXTAREA" | "BUTTON"
-            )
-        }) && !inside_island(&event, &host.borrow().root)
+        if target_element(&event).as_ref().is_some_and(is_form_control)
+            && !inside_island(&event, &host.borrow().root)
         {
             return;
         }
@@ -594,7 +594,7 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             }
         }
         if let Some(mouse) = event.dyn_ref::<web_sys::MouseEvent>() {
-            if !mouse.shift_key() {
+            if !mouse.shift_key() && !target_element(&event).as_ref().is_some_and(is_form_control) {
                 if let Some(inline) = target_element(&event)
                     .and_then(|el| {
                         el.closest("[data-content-kind='code_block']")
@@ -716,7 +716,7 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             };
             if mouse.button() != 0
                 || host.borrow().engine.borrow().read_only()
-                || !host.borrow().engine.borrow().profile().has_blocks()
+                || host.borrow().engine.borrow().profile() != crate::engine::Profile::BlockDocument
                 || target_element(&event).is_some_and(|target| {
                     target != root && root.contains(Some(&target)) || target.closest(".dxeditor__overlays,.dxeditor-engine__surface,.dxeditor-gutter,.dxeditor-table-edges").ok().flatten().is_some()
                 })
