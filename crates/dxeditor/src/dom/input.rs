@@ -555,9 +555,10 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
         );
     })?;
     DomHost::listen(host, root.as_ref(), "pointerdown", false, |host, event| {
-        if !inside_island(&event, &host.borrow().root) {
-            host.borrow_mut().cell_drag = cell_at(&event);
+        if inside_island(&event, &host.borrow().root) {
+            return;
         }
+        host.borrow_mut().cell_drag = cell_at(&event);
         if let Some(target) = target_element(&event) {
             if let Some(content) = target
                 .closest("[data-content-kind='divider'],[data-content-kind='opaque_markdown']")
@@ -575,9 +576,6 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
                     return;
                 }
             }
-        }
-        if inside_island(&event, &host.borrow().root) {
-            return;
         }
         if let Some(el) = target_element(&event) {
             if el

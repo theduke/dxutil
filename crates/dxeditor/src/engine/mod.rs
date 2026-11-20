@@ -597,7 +597,7 @@ impl EditorEngine {
             command @ Command::InsertBlocks {
                 at: crate::InsertAt::Selection,
                 ..
-            } if self.open_menu.as_deref() == Some("bookmark") => {
+            } if matches!(self.open_menu.as_deref(), Some("bookmark" | "image-url")) => {
                 self.open_menu = None;
                 self.batch_edit(TxKind::Command, |engine| {
                     let mut output = commands::run(engine, command);
