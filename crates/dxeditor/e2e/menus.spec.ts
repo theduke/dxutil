@@ -44,6 +44,15 @@ test('block menus preserve text and the insert menu leaves no slash on cancel', 
   await expect(page.getByRole('listbox')).toHaveCount(0);
   await page.keyboard.type('next');
   await expect(editor(page).locator('[data-content-kind=paragraph]')).toHaveText('next');
+  await heading.hover();
+  await page.getByRole('button', { name: 'Insert block', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Search blocks' })).toBeFocused();
+  await heading.click({ position: { x: 20, y: 10 } });
+  await page.keyboard.press('End');
+  await page.keyboard.type(' keeps typing');
+  await expect(heading).toHaveText('original tail keeps typing');
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+
 });
 
 test('plain table menu toggles both headers and edits explicit axes',async ({page})=>{

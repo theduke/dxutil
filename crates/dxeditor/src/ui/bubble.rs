@@ -29,8 +29,12 @@ pub(super) fn Bubble(ui: EditorUiState, handle: EngineHandle, catalog: EditorCat
     };
     let above = (placed.y - viewport.y) * scale;
     let below = (viewport.y + viewport.height - placed.y) * scale - BUBBLE.height;
-    let upward = below < DROPDOWN_HEIGHT && above > below;
-    let menu_height = (if upward { above } else { below } - 16.).max(120.);
+    let upward = if placed.side == Side::Top {
+        above >= 100. || above > below
+    } else {
+        below < 100. && above > below
+    };
+    let menu_height = (if upward { above } else { below } - 16.).clamp(72., DROPDOWN_HEIGHT);
     let specs = catalog.component_specs();
     let profile = ui.profile;
     let has = |kind: &str| {

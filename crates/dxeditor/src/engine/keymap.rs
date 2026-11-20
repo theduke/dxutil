@@ -57,6 +57,9 @@ pub fn resolve(engine: &EditorEngine, key: &KeyChord) -> Option<KeyAction> {
             "End" => return command(Command::SuggestionLast),
             "Escape" => return command(Command::DismissSuggestion),
             "Backspace" if let Some(query) = engine.manual_slash_query() => {
+                if query.is_empty() {
+                    return command(Command::DismissSuggestion);
+                }
                 let mut query = query.to_owned();
                 query.pop();
                 return command(Command::SetSuggestionQuery(query));
@@ -365,11 +368,11 @@ fn table_vertical(engine: &EditorEngine, down: bool) -> Option<KeyAction> {
     } else {
         match index.checked_sub(1) {
             Some(target) => target,
-            None => return command(Command::FocusBeforeBlock(uid)),
+            None => return leave_table(engine, &uid, false),
         }
     };
     let Some(target_row) = table.content.get(target) else {
-        return command(Command::FocusAfterBlock(uid));
+        return leave_table(engine, &uid, true);
     };
     let container = InlineContainerRef::Cell {
         row: target_row.id.as_ref()?.0.clone(),
@@ -380,6 +383,31 @@ fn table_vertical(engine: &EditorEngine, down: bool) -> Option<KeyAction> {
         container,
         range.head.offset.min(length),
     )))
+}
+fn leave_table(engine: &EditorEngine, uid: &str, down: bool) -> Option<KeyAction> {
+    let (parent, index) = engine.location(uid)?;
+    let siblings = super::model::children(engine.document(), parent.as_deref())?;
+    let text_caret = |block: &crate::ComponentNode| {
+        let content = block
+            .content
+            .first()
+            .filter(|node| super::model::is_text_kind(&node.kind.0))?;
+        let container = InlineContainerRef::Block(block.id.as_ref()?.0.clone());
+        let offset = if down {
+            0
+        } else {
+            super::text::len(&content.content)
+        };
+        Some(EditorSelection::caret(container, offset))
+    };
+    let selection = if down {
+        siblings.iter().skip(index + 1).find_map(text_caret)
+    } else {
+        siblings[..index].iter().rev().find_map(text_caret)
+    };
+    command(Command::SetSelection(
+        selection.unwrap_or_else(|| engine.selection().clone()),
+    ))
 }
 fn turn_into(kind: &str, attrs: AttributeMap) -> Option<KeyAction> {
     command(Command::TurnInto {

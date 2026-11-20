@@ -430,6 +430,14 @@ pub fn EditorSurfaces(
         && ui.selection.kind.as_deref() != Some("chip");
     rsx! {
         style { dangerous_inner_html: SURFACE_STYLE }
+        for (index, rect) in ui.geometry.link_selection.iter().enumerate() {
+            div {
+                key: "{index}",
+                aria_hidden: "true",
+                class: "dxeditor-link-selection",
+                style: "left:{rect.x}px;top:{rect.y}px;width:{rect.width}px;height:{rect.height}px",
+            }
+        }
         if let Some(menu) = &menu {
             match menu.as_str() {
                 "image-url" => rsx! { image_menu::ImageUrlPopover { ui: ui.clone(), handle: handle.clone() } },
@@ -467,6 +475,8 @@ pub fn EditorSurfaces(
     }
 }
 const SURFACE_STYLE: &str = r#"
+.dxeditor-link-selection{position:absolute;pointer-events:none;background:color-mix(in srgb,var(--dx-accent,#176b87) 26%,transparent);border-radius:2px}
+
 .dxeditor-engine__surface{display:flex;gap:4px;padding:6px;border:1px solid var(--dx-border,#cfd8e3);border-radius:8px;background:var(--dx-surface,white);box-shadow:0 4px 16px #0002;color:var(--dx-text,#17202a);box-sizing:border-box;overflow:auto;max-width:calc(100vw - 16px)}
 .dxeditor-engine__button{min-width:28px;min-height:28px;border:0;border-radius:4px;padding:5px 8px;color:inherit;background:transparent;font:inherit;cursor:pointer;text-align:left}
 .dxeditor-engine__button:hover,.dxeditor-engine__button[aria-pressed=true],.dxeditor-engine__button[aria-selected=true]{background:var(--dx-surface-muted,#edf2f5)}

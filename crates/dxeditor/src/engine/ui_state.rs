@@ -15,6 +15,7 @@ pub struct Geometry {
     pub caret: Option<Rect>,
     /// The start of the trigger range, independent of its changing query.
     pub suggestion_anchor: Option<Rect>,
+    pub link_selection: Vec<Rect>,
     pub block: Option<Rect>,
     /// The first line of the block's content, where its gutter controls align.
     pub block_line: Option<Rect>,

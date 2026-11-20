@@ -605,6 +605,10 @@ impl EditorEngine {
                     output
                 })
             }
+            Command::CancelUploadPlaceholder {
+                uid,
+                opened_revision,
+            } => self.cancel_upload_placeholder(uid, opened_revision),
             Command::SuggestionNext(delta) => {
                 self.suggestion.step(delta);
                 Vec::new()
@@ -1117,6 +1121,63 @@ fn error_output(error: EngineError) -> EngineOutput {
 }
 
 impl EditorEngine {
+    fn cancel_upload_placeholder(
+        &mut self,
+        uid: Uid,
+        opened_revision: Option<u64>,
+    ) -> Vec<EngineOutput> {
+        if !self.content(&uid).is_some_and(|content| {
+            matches!(content.kind.0.as_str(), "image" | "file")
+                && content
+                    .attrs
+                    .get("media")
+                    .is_none_or(serde_json::Value::is_null)
+        }) {
+            return Vec::new();
+        }
+        let inverse = self.history.undo_transaction().filter(|tx| {
+            opened_revision == Some(self.revision)
+                && tx.ops.iter().any(|op| {
+                    matches!(op, Op::RemoveBlocks { blocks, .. }
+                    if blocks.iter().any(|block| block.id.as_ref().is_some_and(|id| id.0 == uid)))
+                })
+        });
+        let Some(mut inverse) = inverse else {
+            return commands::run(self, Command::RemoveNode(uid));
+        };
+        // Cancel the structural insertion, including any continuation it
+        // created. Keep the slash query deleted and merge the two structural
+        // changes so Undo cannot resurrect the upload placeholder.
+        inverse.ops.retain(|op| {
+            if matches!(op, Op::SetContent { .. }) {
+                if let EditorSelection::Text(range) = &mut inverse.selection_after {
+                    let deletion = op.invert();
+                    map_point(&mut range.anchor, std::slice::from_ref(&deletion), false);
+                    map_point(&mut range.head, std::slice::from_ref(&deletion), true);
+                }
+                false
+            } else {
+                true
+            }
+        });
+        if self.selection != inverse.selection_before
+            && let EditorSelection::Text(range) = &self.selection
+            && [&range.anchor, &range.head].iter().all(|point| {
+                self.container_owner(&point.container).is_some_and(|owner| {
+                    !inverse.ops.iter().any(|op| {
+                        matches!(op, Op::RemoveBlocks { blocks, .. }
+                        if blocks.iter().any(|block| model::find(block, &owner).is_some()))
+                    })
+                })
+            })
+        {
+            inverse.selection_after = self.selection.clone();
+        }
+        inverse.selection_before = self.selection.clone();
+        inverse.history = HistoryMode::Merge;
+        self.transact(inverse)
+            .unwrap_or_else(|error| vec![error_output(error)])
+    }
     pub(crate) fn manual_slash_query(&self) -> Option<&str> {
         self.suggestion
             .active
@@ -1135,6 +1196,16 @@ impl EditorEngine {
     fn finish_outputs(&mut self, mut outputs: Vec<EngineOutput>) -> Vec<EngineOutput> {
         if self.composing {
             return outputs;
+        }
+        if self.manual_slash_query().is_some()
+            && self
+                .suggestion
+                .active
+                .as_ref()
+                .is_some_and(|matched| self.selection.text_range() != Some(&matched.range))
+        {
+            self.manual_suggestion = false;
+            self.suggestion.close();
         }
         let next = if self.manual_suggestion && !self.options.read_only {
             self.suggestion.active.clone()
@@ -1707,7 +1778,7 @@ impl EditorEngine {
             return vec![];
         }
         let mut output = self.batch_edit(TxKind::Host, |engine| {
-            let previous = engine.selection.clone();
+            let mut previous = engine.selection.clone();
             engine.selection = request.selection;
             let mut output = match request.kind {
                 PendingKind::Picker(mode) => engine.insert_entity(entity, &mode),
@@ -1722,6 +1793,13 @@ impl EditorEngine {
             };
             output.extend(engine.continue_after_block());
             if !owns_selection && selection_exists(&engine.doc, &previous) {
+                if let EditorSelection::Text(range) = &mut previous
+                    && let Some(batch) = &engine.batch
+                {
+                    let collapsed = range.is_collapsed();
+                    map_point(&mut range.anchor, &batch.ops, collapsed);
+                    map_point(&mut range.head, &batch.ops, true);
+                }
                 engine.selection = previous;
                 engine.clamp_selection();
             }

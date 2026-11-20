@@ -171,6 +171,13 @@ impl ComponentEditorHandle {
     pub fn remove_node(&self, uid: String) {
         self.run(Command::RemoveNode(uid));
     }
+    /// Cancel a picker opened for a fresh image or file placeholder.
+    pub fn cancel_upload_placeholder(&self, uid: String, opened_revision: Option<u64>) {
+        self.run(Command::CancelUploadPlaceholder {
+            uid,
+            opened_revision,
+        });
+    }
     pub fn replace_node(&self, uid: String, nodes: Vec<ComponentNode>) {
         self.run(Command::ReplaceNode { uid, nodes });
     }

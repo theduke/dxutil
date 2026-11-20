@@ -10,6 +10,7 @@ pub(super) fn Suggestions(ui: EditorUiState, handle: EngineHandle) -> Element {
     let mut group = String::new();
     let active_id = format!("{}-{}", id, suggestion.active_index);
     let generation = suggestion.generation;
+    let empty_manual_slash = slash && suggestion.manual && suggestion.matched.query.is_empty();
     use_effect(use_reactive(
         (&active_id, &generation),
         move |(active_id, _)| {
@@ -33,7 +34,7 @@ pub(super) fn Suggestions(ui: EditorUiState, handle: EngineHandle) -> Element {
         },
     ));
     // Keyboard handling remains on the editable root; options never take focus.
-    rsx! {div{class:if slash{"dxeditor-engine__surface dxeditor-engine__slash"}else{"dxeditor-engine__surface dxeditor-engine__mentions"},id:"{id}",role:"listbox",aria_label:if slash{"Insert block"}else{"Mention entity"},style:"{placement}",onkeydown:{let h=handle.clone();move|event:KeyboardEvent|{let command=match event.key().to_string().as_str(){"ArrowDown"=>Some(Command::SuggestionNext(1)),"ArrowUp"=>Some(Command::SuggestionNext(-1)),"Home"=>Some(Command::SuggestionFirst),"End"=>Some(Command::SuggestionLast),"Escape"=>Some(Command::DismissSuggestion),"Enter"=>Some(Command::AcceptSuggestion),_=>None};if let Some(command)=command{let restore=matches!(command,Command::AcceptSuggestion|Command::DismissSuggestion);event.prevent_default();event.stop_propagation();h.run(command);if restore{h.run(Command::Focus);}}}},
+    rsx! {div{class:if slash{"dxeditor-engine__surface dxeditor-engine__slash"}else{"dxeditor-engine__surface dxeditor-engine__mentions"},id:"{id}",role:"listbox",aria_label:if slash{"Insert block"}else{"Mention entity"},style:"{placement}",onkeydown:{let h=handle.clone();move|event:KeyboardEvent|{let command=match event.key().to_string().as_str(){"ArrowDown"=>Some(Command::SuggestionNext(1)),"ArrowUp"=>Some(Command::SuggestionNext(-1)),"Home"=>Some(Command::SuggestionFirst),"End"=>Some(Command::SuggestionLast),"Escape"=>Some(Command::DismissSuggestion),"Backspace" if empty_manual_slash=>Some(Command::DismissSuggestion),"Enter"=>Some(Command::AcceptSuggestion),_=>None};if let Some(command)=command{let restore=matches!(command,Command::AcceptSuggestion|Command::DismissSuggestion);event.prevent_default();event.stop_propagation();h.run(command);if restore{h.run(Command::Focus);}}}},
         if suggestion.manual {input{r#type:"search",autofocus:true,onmounted:focus_input,placeholder:if slash{"Search blocks"}else{"Search entities"},aria_label:if slash{"Search blocks"}else{"Search entities"},value:"{suggestion.matched.query}",oninput:{let h=handle.clone();move|event|h.run(Command::SetSuggestionQuery(event.value()))}}}
         if suggestion.searching{div{role:"status","Searching…"}}
         for (index,item) in suggestion.items.iter().enumerate(){

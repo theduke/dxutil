@@ -88,6 +88,10 @@ pub enum Command {
     },
     SelectNode(Uid),
     RemoveNode(Uid),
+    CancelUploadPlaceholder {
+        uid: Uid,
+        opened_revision: Option<u64>,
+    },
     ReplaceNode {
         uid: Uid,
         nodes: Vec<ComponentNode>,

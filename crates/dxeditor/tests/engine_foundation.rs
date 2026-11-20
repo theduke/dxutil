@@ -589,7 +589,8 @@ fn host_picker_tracks_original_uid_when_other_blocks_inserted() {
         at: dxeditor::InsertAt::AfterBlock { uid: id.clone() },
         nodes: vec![model::paragraph()],
     });
-    e.handle(EngineInput::HostResponse(
+    let later_selection = e.selection().clone();
+    let result = e.handle(EngineInput::HostResponse(
         dxeditor::engine::HostResponse::EntityPicker {
             request_id: 55,
             entity: Some(dxeditor::EntityLinkCandidate {
@@ -599,6 +600,12 @@ fn host_picker_tracks_original_uid_when_other_blocks_inserted() {
             }),
         },
     ));
+    assert_eq!(e.selection(), &later_selection);
+    assert!(
+        !result
+            .iter()
+            .any(|event| matches!(event, EngineOutput::Focus { .. }))
+    );
     assert_eq!(
         model::content(e.document(), &id)
             .unwrap()
@@ -857,6 +864,41 @@ fn input_rule_notifications_carry_the_document_for_their_revision() {
         "heading"
     );
 }
+#[test]
+fn cancelled_fresh_upload_restores_the_nearby_caret_without_placeholder_history() {
+    for (kind, prefix) in [("image", ""), ("file", "Earlier text ")] {
+        let mut e = engine("");
+        type_text(&mut e, &format!("{prefix}/{kind}"));
+        let output = e.run(Command::AcceptSuggestion);
+        let placeholder = output
+            .iter()
+            .find_map(|event| match event {
+                EngineOutput::Request(dxeditor::EngineEvent::FilePickerRequest {
+                    uid,
+                    placeholder: true,
+                    ..
+                }) => Some(uid.clone()),
+                _ => None,
+            })
+            .expect("fresh upload picker");
+        e.run(Command::CancelUploadPlaceholder {
+            uid: placeholder.clone(),
+            opened_revision: Some(e.revision()),
+        });
+        assert!(model::block(e.document(), &placeholder).is_none());
+        assert_eq!(plain(&e), prefix);
+        assert_eq!(model::block_order(e.document()).len(), 1);
+        let range = e.selection().text_range().expect("nearby text caret");
+        assert!(range.is_collapsed());
+        assert_eq!(range.head.offset, prefix.len());
+        e.run(Command::Undo);
+        assert!(model::block(e.document(), &placeholder).is_none());
+        e.run(Command::Redo);
+        assert_eq!(plain(&e), prefix);
+        assert!(model::block(e.document(), &placeholder).is_none());
+    }
+}
+
 #[test]
 fn slash_selection_replacement_is_one_history_entry() {
     let mut e = engine("");

@@ -56,6 +56,27 @@ fn point_rect(root: &Element, point: &crate::engine::TextPoint) -> Option<Rect> 
     let bounds = rect(inline.get_bounding_client_rect());
     (bounds.height > 0.0).then_some(bounds)
 }
+// The browser may hide native selection while the link URL field is focused.
+fn link_selection(root: &Element, engine: &EditorEngine) -> Option<web_sys::DomRectList> {
+    if engine.open_menu.as_deref() != Some("link") {
+        return None;
+    }
+    let model = engine
+        .selection()
+        .text_range()
+        .filter(|range| !range.is_collapsed())?;
+    let (anchor, a) = super::mapping::to_dom(root, &model.anchor)?;
+    let (head, h) = super::mapping::to_dom(root, &model.head)?;
+    let range = root.owner_document()?.create_range().ok()?;
+    range.set_start(&anchor, a).ok()?;
+    range.set_end(&head, h).ok()?;
+    if range.collapsed() {
+        range.set_start(&head, h).ok()?;
+        range.set_end(&anchor, a).ok()?;
+    }
+    range.get_client_rects()
+}
+
 pub fn measure(root: &Element, e: &EditorEngine) -> Geometry {
     let wrapper = root
         .closest(".dxeditor, .dx-composer-editor")
@@ -133,6 +154,20 @@ pub fn measure(root: &Element, e: &EditorEngine) -> Geometry {
         }
         ancestor = element.parent_element();
     }
+    let link_selection = link_selection(root, e)
+        .map(|rects| {
+            (0..rects.length())
+                .filter_map(|index| rects.item(index))
+                .filter(|box_rect| {
+                    box_rect.width() > 0.0
+                        && box_rect.height() > 0.0
+                        && box_rect.bottom() > viewport.y
+                        && box_rect.top() < viewport.y + viewport.height
+                })
+                .map(|box_rect| local(rect(box_rect)))
+                .collect()
+        })
+        .unwrap_or_default();
     let selection = root
         .owner_document()
         .and_then(|d| d.get_selection().ok().flatten())
@@ -222,6 +257,7 @@ pub fn measure(root: &Element, e: &EditorEngine) -> Geometry {
             selection,
             caret: caret.or(block),
             suggestion_anchor,
+            link_selection,
             block,
             block_line,
             table,
