@@ -1,4 +1,6 @@
-use super::controls::{MenuGroup, MenuRow, MenuSeparator, SwatchRow, turn_into_options};
+use super::controls::{
+    MenuGroup, MenuRow, MenuSeparator, SwatchRow, mount_menu, turn_into_options,
+};
 use super::*;
 
 /// Space between the gutter controls and the start of the block's text.
@@ -118,7 +120,7 @@ pub(super) fn BlockMenu(
             role: "menu",
             aria_label: "Block actions",
             style: "{placement}",
-            onmounted: focus_first,
+            onmounted: mount_menu,
             onfocusin: roving_focus,
             onkeydown: move |event| menu_keys(event, keys.clone()),
             if textual {

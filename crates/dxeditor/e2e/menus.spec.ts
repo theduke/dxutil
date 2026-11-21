@@ -55,6 +55,30 @@ test('block menus preserve text and the insert menu leaves no slash on cancel', 
 
 });
 
+test('block menu groups fly out beside it, and expand in place when the menu must scroll',async ({page})=>{
+  await open(page); await caret(page); await page.keyboard.type('flyout');
+  const paragraph=editor(page).locator('[data-content-kind=paragraph]');
+  const menu=page.getByRole('menu',{name:'Block actions'});
+  await paragraph.hover(); await page.getByRole('button',{name:'Block actions',exact:true}).click();
+  await menu.locator('summary').filter({hasText:'Turn into'}).hover();
+  const flyout=await menu.locator('.dxeditor-menu__submenu').first().evaluate(e=>({position:getComputedStyle(e).position,left:e.getBoundingClientRect().left,right:e.closest('[role=menu]')!.getBoundingClientRect().right}));
+  expect(flyout.position).toBe('absolute'); expect(flyout.left).toBeGreaterThanOrEqual(flyout.right);
+  await expect(menu.getByRole('menuitemradio',{name:'Heading 2'})).toBeVisible();
+  await page.keyboard.press('Escape'); await expect(menu).toHaveCount(0);
+  const height=260; await page.setViewportSize({width:1280,height});
+  await paragraph.hover(); await page.getByRole('button',{name:'Block actions',exact:true}).click();
+  await expect(menu).toHaveAttribute('data-inline-groups','');
+  await page.keyboard.press('End');
+  const remove=menu.getByRole('menuitem',{name:'Delete',exact:true}); await expect(remove).toBeFocused();
+  const box=(await remove.boundingBox())!; expect(box.y).toBeGreaterThanOrEqual(0); expect(box.y+box.height).toBeLessThanOrEqual(height);
+  await page.keyboard.press('Home'); await page.keyboard.press('ArrowRight');
+  const first=menu.getByRole('menuitemradio',{name:'Text'}); await expect(first).toBeFocused();
+  expect(await first.evaluate(e=>getComputedStyle(e.closest('.dxeditor-menu__submenu')!).position)).toBe('static');
+  await page.keyboard.press('End'); await expect(menu.getByRole('menuitemradio',{name:'Code block'})).toBeInViewport();
+  await menu.getByRole('menuitemradio',{name:'Heading 2'}).click();
+  await expect(editor(page).getByRole('heading',{level:2})).toHaveText('flyout');
+});
+
 test('plain table menu toggles both headers and edits explicit axes',async ({page})=>{
   await open(page,'/blocks?fixture=table'); await caret(page,editor(page).locator('td,th').first());
   await page.getByRole('button',{name:'Row 1 actions',exact:true}).click();

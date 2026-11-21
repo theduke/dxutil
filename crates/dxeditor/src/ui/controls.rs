@@ -68,6 +68,19 @@ fn flyout(group: &web_sys::Element) -> bool {
         .is_some_and(|position| position == "absolute")
 }
 
+/// Opens a menu whose groups may fly out: when its rows do not fit the room
+/// it was given, flyouts could not follow it as it scrolls, so its groups
+/// expand in place and the menu scrolls instead. Focuses its first row.
+pub(super) fn mount_menu(event: MountedEvent) {
+    use dioxus::web::WebEventExt;
+    if let Some(menu) = event.data().try_as_web_event()
+        && menu.scroll_height() > menu.client_height() + 1
+    {
+        let _ = menu.set_attribute("data-inline-groups", "");
+    }
+    super::focus_first(event);
+}
+
 /// Whether `element` is a row of a group shown as a flyout.
 pub(super) fn in_flyout(element: &web_sys::Element) -> bool {
     element

@@ -266,7 +266,7 @@ details[open] > summary.dxeditor-menu__row > svg:last-child { transform: rotate(
    Rows share one neutral highlight, which follows both the pointer and the
    keyboard, so a menu never shows two highlighted rows. */
 .dxeditor--blocks { --dx-menu-hover: color-mix(in srgb, currentColor 8%, transparent); --dx-menu-shadow: 0 0 0 1px rgb(15 23 42 / 3%), 0 2px 6px rgb(15 23 42 / 6%), 0 12px 32px rgb(15 23 42 / 12%); }
-.dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu, .dxeditor-bubble__menu, .dxeditor-engine__slash, .dxeditor-engine__mentions, .dxeditor-engine__bubble, .dxeditor-engine__link-popover, .dxeditor-menu__submenu) { box-shadow: var(--dx-menu-shadow); }
+.dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu, .dxeditor-bubble__menu, .dxeditor-engine__slash, .dxeditor-engine__mentions, .dxeditor-engine__bubble, .dxeditor-engine__link-popover) { box-shadow: var(--dx-menu-shadow); }
 .dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu, .dxeditor-bubble__menu) { padding: 5px; gap: 1px; }
 .dxeditor--blocks .dxeditor-menu__row, .dxeditor--blocks .dxeditor-engine__surface details > summary.dxeditor-menu__row { min-height: 32px; padding: 0 8px; gap: 10px; border-radius: 6px; font-size: 14px; line-height: 20px; outline: none; }
 .dxeditor--blocks .dxeditor-menu__row > svg:first-child { color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084)); }
@@ -290,10 +290,17 @@ details[open] > summary.dxeditor-menu__row > svg:last-child { transform: rotate(
   .dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu) { overflow: visible; }
   .dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu) details { position: relative; padding-bottom: 0; }
   .dxeditor--blocks .dxeditor-engine__block-menu details[open], .dxeditor--blocks .dxeditor-engine__table-menu details[open] { padding-bottom: 0; }
-  .dxeditor--blocks .dxeditor-menu__submenu { position: absolute; z-index: 1; top: -6px; left: calc(100% + 10px); box-sizing: border-box; width: max-content; min-width: 220px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); margin: 0; padding: 5px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--dx-border, var(--semantic-color-border, #cfd8e3)); border-radius: 10px; background: var(--dx-surface, var(--semantic-color-surface-1, white)); }
+  .dxeditor--blocks .dxeditor-menu__submenu { position: absolute; z-index: 1; top: -6px; left: calc(100% + 10px); box-sizing: border-box; width: max-content; min-width: 220px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); margin: 0; padding: 5px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--dx-border, var(--semantic-color-border, #cfd8e3)); border-radius: 10px; background: var(--dx-surface, var(--semantic-color-surface-1, white)); box-shadow: var(--dx-menu-shadow); }
   .dxeditor--blocks .dxeditor-menu__submenu[data-side=start] { left: auto; right: calc(100% + 10px); }
   .dxeditor--blocks details[open] > summary.dxeditor-menu__row { background: var(--dx-menu-hover); }
   .dxeditor--blocks details[open] > summary.dxeditor-menu__row > svg:last-child { transform: none; }
+  /* A menu too tall for its room scrolls, with its groups expanded in place. */
+  .dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu)[data-inline-groups] { overflow-y: auto; }
+  .dxeditor--blocks [data-inline-groups] details { position: static; }
+  .dxeditor--blocks [data-inline-groups] .dxeditor-menu__submenu { position: static; width: auto; min-width: 0; max-width: none; max-height: none; margin: 1px 0 4px 17px; padding: 0 0 0 6px; overflow: visible; border: 0; border-left: 1px solid var(--dx-border, var(--semantic-color-border, #e3e3e1)); border-radius: 0; background: transparent; box-shadow: none; }
+  .dxeditor--blocks [data-inline-groups] details[open] > summary.dxeditor-menu__row { background: transparent; }
+  .dxeditor--blocks [data-inline-groups] details[open] > summary.dxeditor-menu__row:focus { background: var(--dx-menu-hover); }
+  .dxeditor--blocks [data-inline-groups] details[open] > summary.dxeditor-menu__row > svg:last-child { transform: rotate(90deg); }
 }
 .dxeditor--blocks summary.dxeditor-menu__row > svg:last-child { width: 14px; height: 14px; color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084)); opacity: 1; }
 .dxeditor--blocks .dxeditor-menu__submenu .dxeditor-bubble__heading:first-child { padding-top: 4px; }

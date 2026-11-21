@@ -1,4 +1,4 @@
-use super::controls::{MenuGroup, MenuRow, MenuSeparator, SwatchRow};
+use super::controls::{MenuGroup, MenuRow, MenuSeparator, SwatchRow, mount_menu};
 use super::*;
 
 /// Quiet controls on the edges of the focused table: a handle for the
@@ -229,7 +229,7 @@ pub(super) fn TableMenu(ui: EditorUiState, handle: EngineHandle) -> Element {
             role: "menu",
             aria_label: if row { "Row actions" } else { "Column actions" },
             style: "{placement}",
-            onmounted: focus_first,
+            onmounted: mount_menu,
             onfocusin: roving_focus,
             onkeydown: move |event| menu_keys(event, keys.clone()),
             MenuRow {
