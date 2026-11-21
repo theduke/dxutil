@@ -50,8 +50,15 @@ pub(super) fn Bubble(ui: EditorUiState, handle: EngineHandle, catalog: EditorCat
         ("code", "Inline code", "Control+E"),
     ];
     let options = turn_into_options(&catalog);
+    // A selection across blocks may span several types; it names none.
+    let multiple = ui
+        .selection
+        .selection
+        .text_range()
+        .is_some_and(|range| range.anchor.container != range.head.container);
     let current = options
         .iter()
+        .filter(|_| !multiple)
         .find(|option| option.matches(ui.selection.kind.as_deref(), &ui.selection.attrs))
         .cloned();
     let mark_color = |kind: &str| {
@@ -101,6 +108,7 @@ pub(super) fn Bubble(ui: EditorUiState, handle: EngineHandle, catalog: EditorCat
                     IconButton {
                         label: "Turn into",
                         icon: current.as_ref().map_or_else(|| "paragraph".to_string(), |current| current.icon.clone()),
+                        text: Some(current.as_ref().map_or_else(|| "Turn into".to_string(), |current| current.label.clone())),
                         expanded: Some(open() == Some(BubbleMenu::TurnInto)),
                         onclick: move |_| toggle(BubbleMenu::TurnInto),
                     }

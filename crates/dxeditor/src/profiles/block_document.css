@@ -68,10 +68,19 @@
 .dx-block[data-dragging] { opacity: .35; }
 .dx-block-drop-indicator { position: fixed; z-index: 10000; height: 3px; border-radius: 2px; background: var(--dx-drop-color,#83bffa); pointer-events: none; transform: translateY(-50%); }
 .dx-block-drop-indicator::before { content: ''; position: absolute; top: -2px; left: -3px; width: 7px; height: 7px; box-sizing: border-box; border: 2px solid var(--dx-drop-color,#83bffa); border-radius: 50%; background: var(--dx-drop-surface,white); }
-.dxeditor--blocks .dxeditor-engine__block-controls { flex-direction: row; align-items: center; gap: 2px; padding: 0; border: 0; background: transparent; box-shadow: none; user-select: none; }
-.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 24px; height: 24px; min-width: 24px; min-height: 24px; padding: 0; border: 0; border-radius: 4px; background: transparent; box-shadow: none; color: var(--dx-text-muted,var(--semantic-color-text-muted,#9b9b96)); opacity: .65; transition: background-color 100ms ease-out, opacity 100ms ease-out; }
-.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-block-grip { width: 24px; min-width: 24px; }
-.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button:hover, .dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button[aria-expanded=true] { opacity: 1; color: var(--dx-text-muted,var(--semantic-color-text-muted,#787873)); background: var(--dx-surface-muted,var(--semantic-color-surface-2,#efefed)); }
+/* Block controls: a joined pair of quiet buttons, the insert button and the
+   grip, that sit just before the block's first line. */
+.dxeditor--blocks .dxeditor-engine__block-controls { flex-direction: row; align-items: center; gap: 0; padding: 0; border: 0; background: transparent; box-shadow: none; user-select: none; -webkit-user-select: none; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; flex: none; width: 24px; height: 24px; min-width: 24px; min-height: 24px; padding: 0; border: 0; border-radius: 5px; background: transparent; box-shadow: none; color: var(--dx-text-muted,var(--semantic-color-text-muted,#9b9b96)); opacity: .6; transition: background-color 100ms ease-out, opacity 100ms ease-out, color 100ms ease-out; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button > svg { width: 16px; height: 16px; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-block-grip { width: 18px; min-width: 18px; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-block-grip > svg { width: 10px; height: 16px; }
+.dxeditor--blocks .dxeditor-engine__block-controls:hover .dxeditor-engine__button { opacity: .85; }
+.dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button:hover, .dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button[aria-expanded=true] { opacity: 1; color: var(--dx-text,var(--semantic-color-text,#37352f)); background: color-mix(in srgb, currentColor 9%, transparent); }
+@media (pointer: coarse) {
+  .dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button { width: 28px; height: 30px; min-width: 28px; min-height: 30px; opacity: .75; }
+  .dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-block-grip { width: 22px; min-width: 22px; }
+}
 .dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-engine__button:focus-visible { opacity: 1; outline: 2px solid var(--dx-accent,var(--semantic-color-primary,#2383e2)); outline-offset: 1px; }
 .dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-block-grip { cursor: grab; touch-action: none; }
 .dxeditor--blocks .dxeditor-engine__block-controls .dxeditor-block-grip:active { cursor: grabbing; }
@@ -152,7 +161,7 @@
 .dxeditor--blocks .dxeditor-engine__table-menu { gap: 1px; box-sizing: border-box; width: min(260px, calc(100vw - 24px)); overflow-y: auto; overscroll-behavior: contain; padding: 4px; border-radius: 10px; box-shadow: 0 1px 2px rgb(15 23 42 / 6%), 0 8px 28px rgb(15 23 42 / 14%); font-size: 14px; line-height: 1.4; }
 .dxeditor--blocks .dxeditor-engine__table-menu details { display: flex; flex: none; flex-direction: column; gap: 1px; }
 .dxeditor--blocks .dxeditor-engine__content :is(td,th)[data-selected] { position: relative; }
-.dxeditor--blocks .dxeditor-engine__content :is(td,th)[data-selected]::after { background: color-mix(in srgb,var(--dx-accent,#2383e2) 12%,transparent); }
+.dxeditor--blocks .dxeditor-engine__content :is(td,th)[data-selected]::after { background: color-mix(in srgb,var(--dx-accent,#2383e2) 18%,transparent); }
 .dxeditor--blocks .dxeditor-table-cell-outline { position: absolute; box-sizing: border-box; border: 2px solid var(--dx-accent,#2383e2); border-radius: 1px; pointer-events: none; }
 @media (pointer: coarse) {
   .dxeditor--blocks .dxeditor-table-handle--row { width: 20px; height: 28px; }
@@ -253,3 +262,100 @@ details[open] > summary.dxeditor-menu__row > svg:last-child { transform: rotate(
 .dxeditor--blocks :is(.dxeditor-engine__button, .dxeditor-menu__row, .dx-code-language, .dxeditor-table-rail, .dx-block-native-control button) { box-shadow: none; }
 /* Inline code reads as code: monospace on a quiet background. */
 .dxeditor-engine__content :not(pre) > code { padding: .1em .3em; border-radius: 4px; background: var(--dx-surface-muted, var(--semantic-color-surface-2, #f1f1ef)); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em; }
+/* ---- Floating surfaces: one visual language for every menu and toolbar ----
+   Rows share one neutral highlight, which follows both the pointer and the
+   keyboard, so a menu never shows two highlighted rows. */
+.dxeditor--blocks { --dx-menu-hover: color-mix(in srgb, currentColor 8%, transparent); --dx-menu-shadow: 0 0 0 1px rgb(15 23 42 / 3%), 0 2px 6px rgb(15 23 42 / 6%), 0 12px 32px rgb(15 23 42 / 12%); }
+.dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu, .dxeditor-bubble__menu, .dxeditor-engine__slash, .dxeditor-engine__mentions, .dxeditor-engine__bubble, .dxeditor-engine__link-popover, .dxeditor-menu__submenu) { box-shadow: var(--dx-menu-shadow); }
+.dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu, .dxeditor-bubble__menu) { padding: 5px; gap: 1px; }
+.dxeditor--blocks .dxeditor-menu__row, .dxeditor--blocks .dxeditor-engine__surface details > summary.dxeditor-menu__row { min-height: 32px; padding: 0 8px; gap: 10px; border-radius: 6px; font-size: 14px; line-height: 20px; outline: none; }
+.dxeditor--blocks .dxeditor-menu__row > svg:first-child { color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084)); }
+.dxeditor--blocks .dxeditor-menu__row--danger > svg:first-child { color: inherit; }
+/* The pointer moves focus to the row under it, so only focus highlights. */
+.dxeditor--blocks :is(.dxeditor-menu__row, summary.dxeditor-menu__row):hover { background: transparent; }
+.dxeditor--blocks :is(.dxeditor-menu__row, summary.dxeditor-menu__row):not(.dxeditor-menu__row--danger):is(:hover, :focus) { color: inherit; }
+.dxeditor--blocks :is(.dxeditor-menu__row, summary.dxeditor-menu__row):is(:focus, :focus-visible) { background: var(--dx-menu-hover); outline: none; }
+.dxeditor--blocks .dxeditor-menu__row--danger:is(:focus, :focus-visible) { background: color-mix(in srgb, var(--semantic-color-danger, #b42318) 10%, transparent); color: var(--semantic-color-danger, #b42318); }
+.dxeditor--blocks .dxeditor-menu__row > kbd { margin-left: 12px; font-size: 12px; letter-spacing: .01em; }
+.dxeditor--blocks .dxeditor-menu__row[aria-checked] > svg:last-child { width: 14px; height: 14px; }
+.dxeditor--blocks .dxeditor-menu__row[aria-checked=true] { font-weight: 500; }
+.dxeditor--blocks .dxeditor-menu__separator { margin: 4px 2px; }
+.dxeditor-menu__submenu { display: flex; flex-direction: column; gap: 1px; }
+/* Narrow and touch screens expand a group in place, inset under its title. */
+.dxeditor--blocks .dxeditor-menu__submenu { margin: 1px 0 4px 17px; padding-left: 6px; border-left: 1px solid var(--dx-border, var(--semantic-color-border, #e3e3e1)); }
+.dxeditor--blocks .dxeditor-menu__submenu .dxeditor-bubble__swatches { flex-wrap: wrap; }
+.dxeditor--blocks details[open] > summary.dxeditor-menu__row > svg:last-child { transform: rotate(90deg); }
+/* Wide screens with a pointer open a group as a flyout beside its menu. */
+@media (min-width: 720px) and (pointer: fine) {
+  .dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu) { overflow: visible; }
+  .dxeditor--blocks :is(.dxeditor-engine__block-menu, .dxeditor-engine__table-menu) details { position: relative; padding-bottom: 0; }
+  .dxeditor--blocks .dxeditor-engine__block-menu details[open], .dxeditor--blocks .dxeditor-engine__table-menu details[open] { padding-bottom: 0; }
+  .dxeditor--blocks .dxeditor-menu__submenu { position: absolute; z-index: 1; top: -6px; left: calc(100% + 10px); box-sizing: border-box; width: max-content; min-width: 220px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); margin: 0; padding: 5px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--dx-border, var(--semantic-color-border, #cfd8e3)); border-radius: 10px; background: var(--dx-surface, var(--semantic-color-surface-1, white)); }
+  .dxeditor--blocks .dxeditor-menu__submenu[data-side=start] { left: auto; right: calc(100% + 10px); }
+  .dxeditor--blocks details[open] > summary.dxeditor-menu__row { background: var(--dx-menu-hover); }
+  .dxeditor--blocks details[open] > summary.dxeditor-menu__row > svg:last-child { transform: none; }
+}
+.dxeditor--blocks summary.dxeditor-menu__row > svg:last-child { width: 14px; height: 14px; color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084)); opacity: 1; }
+.dxeditor--blocks .dxeditor-menu__submenu .dxeditor-bubble__heading:first-child { padding-top: 4px; }
+.dxeditor--blocks .dxeditor-engine__block-menu .dxeditor-bubble__swatches { gap: 3px; padding: 2px 4px 6px; }
+.dxeditor--blocks .dxeditor-engine__block-menu .dxeditor-bubble__swatch { width: 26px; height: 26px; min-width: 26px; min-height: 26px; }
+.dxeditor--blocks .dxeditor-bubble__swatch { border-color: color-mix(in srgb, currentColor 18%, transparent); transition: transform 80ms ease-out, border-color 80ms ease-out; }
+.dxeditor--blocks .dxeditor-bubble__swatch:is(:hover, :focus-visible) { border-color: currentColor; outline: none; transform: scale(1.06); }
+.dxeditor--blocks .dxeditor-bubble__swatch[aria-pressed=true] { border-color: var(--dx-accent, var(--semantic-color-primary, #176b87)); box-shadow: 0 0 0 1px var(--dx-accent, var(--semantic-color-primary, #176b87)); }
+/* Insert menus: a quiet search field, neutral active option, group titles. */
+.dxeditor--blocks :is(.dxeditor-engine__slash, .dxeditor-engine__mentions) { gap: 1px; padding: 5px; border-radius: 10px; }
+.dxeditor--blocks .dxeditor-engine__slash { width: 340px; }
+.dxeditor--blocks :is(.dxeditor-engine__slash, .dxeditor-engine__mentions) [role=option] { border-radius: 6px; }
+.dxeditor--blocks .dxeditor-engine__slash [role=option] { min-height: 44px; padding: 4px 8px 4px 6px; }
+.dxeditor--blocks .dxeditor-engine__slash [role=option] > svg { width: 32px !important; height: 32px !important; padding: 7px; border-color: color-mix(in srgb, currentColor 12%, transparent); color: var(--dx-text, var(--semantic-color-text, #17202a)); }
+.dxeditor--blocks :is(.dxeditor-engine__slash, .dxeditor-engine__mentions) [role=option]:hover:not([aria-selected=true]) { background: transparent; color: inherit; }
+.dxeditor--blocks :is(.dxeditor-engine__slash, .dxeditor-engine__mentions) [aria-selected=true] { background: var(--dx-menu-hover); color: inherit; }
+.dxeditor--blocks :is(.dxeditor-engine__slash, .dxeditor-engine__mentions) [aria-disabled=true] { opacity: .5; cursor: default; }
+.dxeditor--blocks .dxeditor-engine__slash .dxeditor-slash-copy > span:first-child { font-size: 14px; line-height: 1.3; }
+.dxeditor--blocks .dxeditor-engine__slash kbd { margin-left: 8px; font-size: 11px; opacity: .85; }
+.dxeditor--blocks .dxeditor-menu-group { padding: 8px 8px 4px; font-size: 12px; font-weight: 500; line-height: 1.3; }
+.dxeditor--blocks .dxeditor-menu-group:first-child, .dxeditor--blocks :is(.dxeditor-engine__slash, .dxeditor-engine__mentions) > input + .dxeditor-menu-group { padding-top: 4px; }
+.dxeditor--blocks .dxeditor-engine__surface:is(.dxeditor-engine__slash, .dxeditor-engine__mentions) > input[type=search] { flex: none; width: 100%; height: 36px; min-height: 36px; margin: -1px 0 4px; padding: 0 8px; border: 0; border-bottom: 1px solid var(--dx-border, var(--semantic-color-border, #e3e3e1)); border-radius: 6px 6px 0 0; outline: none; box-shadow: none; background: transparent; font-size: 14px; }
+.dxeditor--blocks .dxeditor-engine__surface:is(.dxeditor-engine__slash, .dxeditor-engine__mentions) > input[type=search]:focus { outline: none; box-shadow: none; border-bottom-color: color-mix(in srgb, var(--dx-accent, var(--semantic-color-primary, #176b87)) 55%, transparent); }
+.dxeditor--blocks .dxeditor-engine__surface:is(.dxeditor-engine__slash, .dxeditor-engine__mentions) > input[type=search]::-webkit-search-cancel-button { display: none; }
+.dxeditor--blocks .dxeditor-engine__surface:is(.dxeditor-engine__slash, .dxeditor-engine__mentions) > [role=status]:not(.dxeditor-slash-empty) { padding: 8px; color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084)); font-size: 13px; }
+.dxeditor--blocks .dxeditor-slash-empty { padding: 14px 8px; font-size: 13px; text-align: center; }
+/* Selection toolbar. */
+.dxeditor--blocks .dxeditor-engine__bubble { gap: 2px; padding: 4px; }
+.dxeditor--blocks .dxeditor-bubble__button { color: inherit; }
+.dxeditor--blocks .dxeditor-bubble__button:hover:not([aria-pressed=true], [aria-expanded=true]) { background: var(--dx-menu-hover); color: inherit; }
+.dxeditor--blocks .dxeditor-bubble__button--menu > svg:last-of-type { width: 14px; height: 14px; margin-left: 1px; opacity: .6; }
+.dxeditor--blocks .dxeditor-bubble__button--text { gap: 6px; padding: 0 6px 0 8px; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.dxeditor--blocks .dxeditor-bubble__button--text > svg:first-child { display: none; }
+.dxeditor--blocks .dxeditor-bubble__text { max-width: 9em; overflow: hidden; text-overflow: ellipsis; }
+.dxeditor--blocks .dxeditor-bubble__separator { height: 20px; margin: 0 3px; }
+.dxeditor--blocks .dxeditor-bubble__menu { top: calc(100% + 6px); left: 0; }
+.dxeditor--blocks .dxeditor-bubble__menu[data-side=top] { top: auto; bottom: calc(100% + 6px); }
+.dxeditor--blocks .dxeditor-bubble__menu[data-align=end] { left: auto; right: 0; }
+/* Link editing: the field reads as part of the popover. */
+.dxeditor--blocks .dxeditor-engine__link-popover { gap: 4px; padding: 4px 4px 4px 6px; }
+.dxeditor--blocks .dxeditor-engine__link-popover input, .dxeditor--blocks .dxeditor-engine__link-popover input:focus { border: 0; box-shadow: none; outline: none; background: transparent; }
+.dxeditor--blocks .dxeditor-engine__link-popover input[aria-invalid=true] { box-shadow: inset 0 -1px 0 var(--semantic-color-danger, #b42318); border-radius: 0; }
+.dxeditor--blocks .dxeditor-engine__link-popover .dxeditor-link-title { border: 0; border-top: 1px solid var(--dx-border, var(--semantic-color-border, #e3e3e1)); border-radius: 0; margin-top: 2px; padding-top: 2px; }
+.dxeditor--blocks .dxeditor-link-preview__url { max-width: 260px; }
+/* Inline code uses the host's monospace face, like code blocks. */
+.dxeditor-engine__content :not(pre) > code { font-family: var(--dx-font-mono, var(--semantic-font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace)); font-size: .86em; padding: .12em .32em; border-radius: 4px; }
+.dxeditor--blocks :is(.dxeditor-engine__slash, .dxeditor-engine__mentions) { max-height: min(380px, var(--dx-room, 380px)) !important; }
+/* Toggle disclosure: a light chevron that turns as the block opens. */
+.dxeditor--blocks .dx-block-native-control button[data-toggle] { display: inline-flex; align-items: center; justify-content: center; font-size: 0; color: var(--dx-text-muted, var(--semantic-color-text-muted, #617084)); }
+.dxeditor--blocks .dx-block-native-control button[data-toggle]::before { content: ''; display: block; box-sizing: border-box; width: 7px; height: 7px; margin-left: -3px; border-right: 1.75px solid currentColor; border-bottom: 1.75px solid currentColor; transform: rotate(-45deg); transition: transform 120ms ease-out; }
+.dxeditor--blocks .dx-block-native-control button[data-toggle][aria-expanded=true]::before { margin: -3px 0 0; transform: rotate(45deg); }
+.dxeditor--blocks .dx-block-native-control button[data-toggle]:hover { color: var(--dx-text, var(--semantic-color-text, #17202a)); background: var(--dx-menu-hover); }
+@media (prefers-reduced-motion: reduce) { .dxeditor--blocks .dx-block-native-control button[data-toggle]::before { transition: none; } }
+/* A selected image is ringed rather than washed over with the block tint. */
+.dxeditor--blocks .dx-block[data-block-kind=image][data-selected] { background: transparent; }
+.dxeditor--blocks .dx-block[data-block-kind=image][data-selected] .dx-doc-image img { outline: 2px solid var(--dx-accent, var(--semantic-color-primary, #176b87)); outline-offset: 2px; }
+.dxeditor--blocks .dxeditor-engine__surface input.dxeditor-image-menu__alt { width: 140px; text-overflow: ellipsis; }
+.dxeditor--blocks .dxeditor-engine__surface input.dxeditor-image-menu__alt:placeholder-shown { background: transparent; box-shadow: inset 0 0 0 1px var(--dx-border, var(--semantic-color-border, #e3e3e1)); }
+.dxeditor--blocks .dxeditor-image-menu > * { flex-shrink: 0; }
+@media (max-width: 640px) { .dxeditor--blocks .dxeditor-image-menu { flex-wrap: wrap; row-gap: 2px; } }
+/* Selected blocks: a tint that reaches a little past the text on both sides,
+   so the text does not touch its edge. */
+.dxeditor--blocks .dx-block[data-selected] { background: transparent; }
+.dxeditor--blocks .dx-block[data-selected]::after { content: ''; position: absolute; inset: 0 -6px; z-index: 0; border-radius: 6px; background: color-mix(in srgb, var(--dx-accent, var(--semantic-color-primary, #176b87)) 12%, transparent); pointer-events: none; }
+.dxeditor--blocks .dx-block[data-block-kind=image][data-selected]::after { content: none; }

@@ -1,8 +1,13 @@
 use super::controls::{MenuGroup, MenuRow, MenuSeparator, SwatchRow, turn_into_options};
 use super::*;
 
-const GUTTER_HEIGHT: f64 = 24.;
-const GUTTER_OFFSET: f64 = 56.;
+/// Space between the gutter controls and the start of the block's text.
+const GUTTER_GAP: f64 = 6.;
+/// The approximate width of the gutter controls; block menus open below them.
+const GUTTER_WIDTH: f64 = 44.;
+/// The tallest first line the controls centre on; taller lines (images,
+/// embeds) keep the controls at their top.
+const GUTTER_LINE: f64 = 48.;
 #[component]
 pub(super) fn BlockControls(
     ui: EditorUiState,
@@ -37,10 +42,12 @@ pub(super) fn BlockControls(
     } else {
         1.
     };
+    // The controls size themselves: their right edge sits a small gap before
+    // the text and they centre on its first line, whatever their hit target.
     let placement = format!(
-        "left:{}px;top:{}px;transform:scale({},{});transform-origin:top left",
-        line.x - GUTTER_OFFSET / sx,
-        (line.y + (line.height.min(48. / sy) - GUTTER_HEIGHT / sy) / 2.).max(0.0),
+        "left:{}px;top:{}px;transform:scale({},{}) translate(-100%,-50%);transform-origin:top left",
+        line.x - GUTTER_GAP / sx,
+        (line.y + line.height.min(GUTTER_LINE / sy) / 2.).max(14. / sy),
         1.0 / sx,
         1.0 / sy
     );
@@ -57,7 +64,7 @@ pub(super) fn BlockControls(
             },icons::Icon{name:"plus"}}
             // Cancelling mousedown here prevents native dragging in browsers.
             button{r#type:"button",class:"dxeditor-engine__button dxeditor-block-grip",title:"Drag to move · Click for actions",aria_label:"Block actions","aria-description":"Drag to reorder. Click for block actions, including Move up and Move down.",aria_haspopup:"menu",draggable:true,"data-dxeditor-drag":"{uid}","data-uid":"{uid}",onclick:move |_|{menu_handle.run(Command::OpenMenu("block".into()));menu_handle.run(Command::SelectNode(menu_uid.clone()));},
-                svg{width:"12",height:"18",view_box:"0 0 12 18",fill:"currentColor","aria-hidden":"true","focusable":"false",
+                svg{width:"10",height:"16",view_box:"0 0 12 18",fill:"currentColor","aria-hidden":"true","focusable":"false",
                     for (x,y) in [(3,4),(9,4),(3,9),(9,9),(3,14),(9,14)]{circle{cx:"{x}",cy:"{y}",r:"1.35"}}
                 }
             }
@@ -82,7 +89,7 @@ pub(super) fn BlockMenu(
         .block_line
         .or(ui.geometry.block)
         .map(|line| Rect {
-            x: line.x - GUTTER_OFFSET / sx,
+            x: line.x - (GUTTER_GAP + GUTTER_WIDTH) / sx,
             ..line
         });
     let placement = style(

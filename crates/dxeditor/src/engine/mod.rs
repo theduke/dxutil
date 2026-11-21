@@ -1373,7 +1373,7 @@ impl EditorEngine {
                         id: kind.into(),
                         label: label.into(),
                         description: Some(description.into()),
-                        icon: Some("@".into()),
+                        icon: Some(kind.into()),
                         data: serde_json::json!({"kind":kind,"mode":mode,"group":"semantic"}),
                         priority: -(score as i32),
                     });

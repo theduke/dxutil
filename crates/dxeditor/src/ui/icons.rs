@@ -16,7 +16,8 @@ pub(super) fn Icon(name: String) -> Element {
         "image" => "M3 3h18v18H3zM3 17l6-6 5 5 3-3 4 4M8 7h.01",
         "file" => "M5 2h9l5 5v15H5zM14 2v6h5",
         "bookmark" => "M6 3h12v18l-6-4-6 4z",
-        "entity_embed" | "mention" => "M9 9a4 4 0 1 1 6 5V8M15 14c4 0 6-2 6-5a9 9 0 1 0-4 11",
+        "mention" => "M9 9a4 4 0 1 1 6 5V8M15 14c4 0 6-2 6-5a9 9 0 1 0-4 11",
+        "entity_embed" => "M3 5h18v14H3zM7 9h4v4H7zM14 10h4M14 13h3M7 16h10",
         "page" => "M4 3h16v18H4zM8 8h8M8 12h8M8 16h5",
         "graph" => "M3 3h5v5H3zM16 3h5v5h-5zM10 16h5v5h-5zM8 6h8M6 8l5 8M18 8l-5 8",
         "table" => "M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18",
@@ -31,6 +32,7 @@ pub(super) fn Icon(name: String) -> Element {
         "colour" => "M4 17l6-13 6 13M6 13h8M3 21h18",
         "check" => "M4 12l5 5L20 6",
         "chevron" => "M9 7l5 5-5 5",
+        "chevron_down" => "M7 10l5 5 5-5",
         "link" => {
             "M10 13l4-4M9 15l-2 2a4 4 0 0 1-6-6l4-4a4 4 0 0 1 6 0m2 2 2-2a4 4 0 1 1 6 6l-4 4a4 4 0 0 1-6 0"
         }

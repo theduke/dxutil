@@ -136,11 +136,13 @@ fn place_surface(
     } else {
         (placed.y, "")
     };
+    // The room on the chosen side; surfaces with a preferred height of their
+    // own cap themselves to it with `--dx-room`.
+    let room = (placed.max_height * sy).max(80.);
     let style = format!(
-        "position:absolute;left:{}px;top:{}px;max-height:{}px;z-index:10;pointer-events:auto;transform:scale({},{}){lift};transform-origin:top left",
+        "position:absolute;left:{}px;top:{}px;max-height:{room}px;--dx-room:{room}px;z-index:10;pointer-events:auto;transform:scale({},{}){lift};transform-origin:top left",
         placed.x,
         top,
-        (placed.max_height * sy).max(80.),
         1. / sx,
         1. / sy
     );
@@ -214,7 +216,12 @@ fn menu_keys(event: KeyboardEvent, handle: EngineHandle) {
     let Ok(Some(menu)) = target.closest("[role=menu],[role=toolbar]") else {
         return;
     };
-    let Ok(buttons) = menu.query_selector_all("button:not([disabled]),input,summary") else {
+    // Inside a group's rows the arrow keys stay within the group; ArrowLeft
+    // returns to its title.
+    let submenu = target.closest(".dxeditor-menu__submenu").ok().flatten();
+    let nested = submenu.is_some();
+    let scope = submenu.unwrap_or(menu);
+    let Ok(buttons) = scope.query_selector_all("button:not([disabled]),input,summary") else {
         return;
     };
     let mut choices = Vec::new();
@@ -223,7 +230,9 @@ fn menu_keys(event: KeyboardEvent, handle: EngineHandle) {
             .item(i)
             .and_then(|n| n.dyn_into::<web_sys::HtmlElement>().ok())
         {
-            if navigable(&element) {
+            // Rows of a flyout are reached through its title, not by walking
+            // the menu they sit beside.
+            if navigable(&element) && (nested || !controls::in_flyout(&element)) {
                 choices.push(element);
             }
         }
@@ -239,6 +248,7 @@ fn menu_keys(event: KeyboardEvent, handle: EngineHandle) {
         let open = key == "ArrowRight";
         if open {
             let _ = group.set_attribute("open", "");
+            controls::fit_submenu(&group);
             if let Ok(Some(item)) = group.query_selector("button:not([disabled])")
                 && let Ok(item) = item.dyn_into::<web_sys::HtmlElement>()
             {
@@ -276,6 +286,9 @@ fn menu_keys(event: KeyboardEvent, handle: EngineHandle) {
         element.set_tab_index(if index == next { 0 } else { -1 });
     }
     let _ = choices[next].focus();
+    if !nested {
+        controls::close_flyouts(&scope, &choices[next]);
+    }
     event.prevent_default();
     event.stop_propagation();
 }

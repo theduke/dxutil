@@ -1,8 +1,9 @@
 use super::controls::IconButton;
 use super::*;
 
-/// The image toolbar's approximate width.
-const TOOLBAR_WIDTH: f64 = 520.;
+/// The image toolbar's approximate size.
+const TOOLBAR_WIDTH: f64 = 540.;
+const TOOLBAR_HEIGHT: f64 = 40.;
 #[component]
 pub(super) fn ImageMenu(ui: EditorUiState, handle: EngineHandle) -> Element {
     let Some(image) = ui.image.clone() else {
@@ -17,9 +18,9 @@ pub(super) fn ImageMenu(ui: EditorUiState, handle: EngineHandle) -> Element {
             .to_string()
     });
     let uid = image.uid.clone();
-    // The toolbar overlays a wide image's top corner. Beside a narrow image
-    // it uses the free column space next to it; only when there is none does
-    // it uses the top edge of the image.
+    // The toolbar floats just above the image, aligned with it and kept
+    // within the column; without room above it in the viewport it sits on the
+    // image's top edge instead.
     let sx = if ui.geometry.scale_x > 0.0 {
         ui.geometry.scale_x
     } else {
@@ -30,38 +31,32 @@ pub(super) fn ImageMenu(ui: EditorUiState, handle: EngineHandle) -> Element {
     } else {
         1.
     };
-    let width = TOOLBAR_WIDTH / sx;
-    let gap = 8. / sx;
-    let beside = ui.geometry.block_line.zip(ui.geometry.block).and_then(|(image, column)| {
-        let right = image.x + image.width;
-        let left = if image.width >= width + 2. * gap {
-            Some(right - gap - width)
-        } else if column.x + column.width - right >= width + gap {
-            Some(right + gap)
-        } else if image.x - column.x >= width + gap {
-            Some(image.x - gap - width)
-        } else {
-            None
-        }?;
-        Some(format!(
-            "position:absolute;left:{left}px;top:{}px;z-index:10;pointer-events:auto;transform:scale({},{});transform-origin:top left",
-            image.y + 8. / sy,
-            1. / sx,
-            1. / sy
-        ))
-    });
-    let placement = beside.unwrap_or_else(|| {
-        let bounds = ui.geometry.block.unwrap_or_default();
-        let top = ui.geometry.block_line.unwrap_or(bounds).y;
-        format!(
-            "position:absolute;left:{}px;top:{}px;max-width:{}px;z-index:10;pointer-events:auto;transform:scale({},{});transform-origin:top left",
-            bounds.x,
-            top + 4. / sy,
-            bounds.width * sx,
-            1. / sx,
-            1. / sy
-        )
-    });
+    let column = ui.geometry.block.unwrap_or_default();
+    let picture = ui.geometry.block_line.unwrap_or(column);
+    let width = (TOOLBAR_WIDTH / sx).min(column.width.max(0.));
+    let alignment_key = image
+        .attrs
+        .get("alignment")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("start");
+    let preferred = match alignment_key {
+        "center" => picture.x + (picture.width - width) / 2.,
+        "end" => picture.x + picture.width - width,
+        _ => picture.x,
+    };
+    let left = preferred.min(column.x + column.width - width).max(column.x);
+    let room_above = (picture.y - ui.geometry.viewport.y) * sy;
+    let (top, lift) = if room_above >= TOOLBAR_HEIGHT + 16. {
+        (picture.y - 6. / sy, " translateY(-100%)")
+    } else {
+        (picture.y + 8. / sy, "")
+    };
+    let placement = format!(
+        "position:absolute;left:{left}px;top:{top}px;max-width:{}px;z-index:10;pointer-events:auto;transform:scale({},{}){lift};transform-origin:top left",
+        column.width * sx,
+        1. / sx,
+        1. / sy
+    );
     let keys = handle.clone();
     let alt_handle = handle.clone();
     let alt_uid = uid.clone();
