@@ -36,7 +36,7 @@ wasm-bindgen = { workspace = true, optional = true }
 js-sys = { workspace = true, optional = true }
 wasm-bindgen-futures = { workspace = true, optional = true }
 web-sys = { workspace = true, optional = true, features = [
-  "Window", "Document", "HtmlDocument", "Element", "HtmlElement", "Node", "NodeList", "HtmlCollection", "Text", "CharacterData", "DocumentFragment",
+  "Window", "Document", "HtmlDocument", "FocusOptions", "Element", "HtmlElement", "Node", "NodeList", "HtmlCollection", "Text", "CharacterData", "DocumentFragment",
   "Event", "EventTarget", "AddEventListenerOptions", "InputEvent", "InputEventInit", "KeyboardEvent", "KeyboardEventInit", "DragEventInit", "FilePropertyBag", "HtmlProgressElement", "CompositionEvent", "FocusEvent", "MouseEvent", "PointerEvent",
   "Range", "StaticRange", "AbstractRange", "Selection", "DomRect", "DomRectReadOnly", "DomRectList", "CaretPosition", "VisualViewport", "Performance",
   "ClipboardEvent", "ClipboardEventInit", "DataTransfer", "DataTransferItem", "DataTransferItemList", "DragEvent", "File", "FileList", "Blob", "FileReader",

@@ -383,7 +383,7 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
                     restore_caret_at_end(host, uid)
                 };
                 DomHost::run(host, Command::SetSelection(restored));
-                DomHost::run(host, Command::Focus);
+                focus_in_place(host);
             } else {
                 DomHost::publish(
                     host,
@@ -405,7 +405,7 @@ pub fn install(host: &Host) -> Result<(), JsValue> {
             event.prevent_default();
             DomHost::run(host, Command::ToggleCollapsed(uid));
             // Keyboard focus stays in the text rather than on the arrow.
-            DomHost::run(host, Command::Focus);
+            focus_in_place(host);
             return;
         }
         if let Some(chip) = target.closest("[data-composer-chip]").ok().flatten() {
@@ -892,6 +892,14 @@ fn cell_at(event: &web_sys::Event) -> Option<(String, (usize, usize))> {
 }
 
 /// A caret at the end of block `uid`'s text.
+/// Returns focus to the text after a click on a control inside it (a to-do's
+/// box, a toggle's arrow) without scrolling to the caret, which may lie
+/// outside the viewport.
+fn focus_in_place(host: &Host) {
+    DomHost::run(host, Command::Focus);
+    host.borrow_mut().scroll_selection = false;
+}
+
 fn restore_caret_at_end(host: &Host, uid: String) -> EditorSelection {
     let container = crate::engine::InlineContainerRef::Block(uid);
     let length = host
