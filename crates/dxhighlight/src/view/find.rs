@@ -4,7 +4,8 @@ use dioxus::prelude::*;
 
 /// Find controls for a [`CodeView`]: query input, case toggle, `n of m`,
 /// previous/next and close. Enter steps forward, Shift+Enter backward and
-/// Escape closes. Styles come from the neighbouring viewer's stylesheet.
+/// Escape closes. The input takes focus on mount and whenever `focus`
+/// changes. Styles come from the neighbouring viewer's stylesheet.
 #[component]
 pub fn FindBar(
     query: FindQuery,
@@ -14,7 +15,16 @@ pub fn FindBar(
     on_step: EventHandler<isize>,
     on_close: EventHandler<()>,
     #[props(default)] scope_note: Option<String>,
+    #[props(default)] focus: usize,
 ) -> Element {
+    let mut input = use_signal(|| None::<std::rc::Rc<MountedData>>);
+    use_effect(use_reactive((&focus,), move |_| {
+        if let Some(input) = input() {
+            spawn(async move {
+                let _ = input.set_focus(true).await;
+            });
+        }
+    }));
     let status = match summary {
         _ if query.text.is_empty() => String::new(),
         FindSummary { count: 0, .. } => "No results".into(),
@@ -36,7 +46,10 @@ pub fn FindBar(
                 aria_label: "Find in text",
                 placeholder: "Find",
                 value: "{query.text}",
-                onmounted: move |event| async move { let _ = event.set_focus(true).await; },
+                onmounted: move |event| async move {
+                    let _ = event.set_focus(true).await;
+                    input.set(Some(event.data()));
+                },
                 oninput: move |event| on_query.call(FindQuery { text: event.value(), case_sensitive: query.case_sensitive }),
                 onkeydown: move |event| match event.key() {
                     Key::Enter => {
@@ -52,7 +65,7 @@ pub fn FindBar(
             }
             button {
                 r#type: "button",
-                title: "Match case",
+                title: "Match case. Otherwise only ASCII letters match in either case.",
                 aria_label: "Match case",
                 aria_pressed: if case_query.case_sensitive { "true" } else { "false" },
                 onclick: move |_| on_query.call(FindQuery { case_sensitive: !case_query.case_sensitive, ..case_query.clone() }),
@@ -85,6 +98,7 @@ pub fn SearchableCodeView(
     let mut query = use_signal(FindQuery::default);
     let mut active = use_signal(|| 0usize);
     let mut summary = use_signal(FindSummary::default);
+    let mut focus = use_signal(|| 0usize);
     let find = open().then(|| CodeFind {
         query: query(),
         active: active(),
@@ -98,6 +112,7 @@ pub fn SearchableCodeView(
                 {
                     event.prevent_default();
                     open.set(true);
+                    focus += 1;
                 }
             },
             if open() {
@@ -106,6 +121,7 @@ pub fn SearchableCodeView(
                     summary: summary(),
                     active: active(),
                     scope_note,
+                    focus: focus(),
                     on_query: move |next| {
                         query.set(next);
                         active.set(0);
