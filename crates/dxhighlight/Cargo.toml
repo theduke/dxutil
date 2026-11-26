@@ -1,6 +1,6 @@
 [package]
 name = "dxhighlight"
-description = "Tree-sitter highlighting and a read-only code viewer for Dioxus"
+description = "Tree-sitter highlighting, a code viewer and a plain-text editor for Dioxus"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

@@ -41,7 +41,7 @@ desktop builds.
 | dxgraph | Tree, mind map, radial and force layouts; node insertion, selection, dragging, fit, zoom, controls and minimap |
 | dxform | Typed fields; blur/submit validation; error messages; dirty/touched/validity metadata; submission and reset |
 | dxterm | ANSI sample output, local echo, reset, font size, resize, selection and link event feedback |
-| dxhighlight | Read-only Rust/TypeScript/JSON highlighting and language detection; selection callbacks; line navigation |
+| dxhighlight | Read-only Rust/TypeScript/JSON highlighting and language detection; find; selection callbacks; line navigation; plain-text editor |
 
 The browser is a curated set of integration examples, not an exhaustive catalog.
 It does not cover every dxcomp primitive, structured block document editing,

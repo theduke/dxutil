@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use dxcomp::button::{Button, ButtonVariant};
-use dxhighlight::{CodeView, LineTarget};
+use dxhighlight::{LineTarget, SearchableCodeView, TextEditor};
 
 fn sample(path: &str) -> &'static str {
     match path {
@@ -33,11 +33,30 @@ pub fn Code() -> Element {
         }
         div { class: "code-filebar", code { "{path}" } span { "{value().lines().count()} lines" } }
         div { class: "code-surface",
-            CodeView {
+            SearchableCodeView {
                 value: value(), path: Some(path()), goto: goto(),
                 on_selection: move |selected: dxhighlight::CodeSelection| selection.set(format!("Lines {}–{} · {} selected characters", selected.start_line, selected.end_line, selected.text.chars().count())),
             }
         }
         div { class: "state-line", role: "status", "{selection}" }
+    }
+}
+
+#[component]
+pub fn PlainEditor() -> Element {
+    let mut value = use_signal(|| sample("main.rs").to_string());
+    let mut saved = use_signal(|| value.peek().clone());
+    rsx! {
+        div { class: "controls-strip",
+            Button { variant: ButtonVariant::Outline, disabled: value() == saved(), onclick: move |_| saved.set(value()), "Save" }
+        }
+        div { class: "code-surface",
+            TextEditor {
+                value: value(), label: "main.rs".to_string(),
+                on_input: move |next| value.set(next),
+                on_save: move |_| saved.set(value()),
+            }
+        }
+        div { class: "state-line", role: "status", if value() == saved() { "Saved" } else { "Unsaved changes · Ctrl/Cmd+S saves" } }
     }
 }

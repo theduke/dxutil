@@ -24,6 +24,7 @@ pub fn render(id: &str) -> Element {
         "form" => rsx! { form::ProfileForm {} },
         "terminal" => rsx! { terminal::Terminal {} },
         "code" => rsx! { code::Code {} },
+        "text-editor" => rsx! { code::PlainEditor {} },
         _ => rsx! { components::Buttons {} },
     }
 }
@@ -37,7 +38,7 @@ pub fn source(id: &str) -> &'static str {
         "form-fields" => include_str!("form_fields.rs"),
         "form" => include_str!("form.rs"),
         "terminal" => include_str!("terminal.rs"),
-        "code" => include_str!("code.rs"),
+        "code" | "text-editor" => include_str!("code.rs"),
         _ => include_str!("components.rs"),
     }
 }

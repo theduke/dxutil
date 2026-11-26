@@ -39,3 +39,42 @@ html[data-theme=dark] {
 .dxhighlight .tok-heading { color: var(--code-type); font-weight: bold; }
 .dxhighlight .tok-emphasis { font-style: italic; }
 .dxhighlight .tok-link { text-decoration: underline; }
+.dxhighlight .dxhighlight-match {
+  background: var(--dxhighlight-match-background, #f7e27a80);
+  border-radius: 2px;
+}
+.dxhighlight .dxhighlight-match[data-active=true] {
+  background: var(--dxhighlight-match-active-background, #f0a83c);
+  color: var(--dxhighlight-match-active-text, inherit);
+}
+html[data-theme=dark] .dxhighlight .dxhighlight-match { background: var(--dxhighlight-match-background, #a98b1a66); }
+html[data-theme=dark] .dxhighlight .dxhighlight-match[data-active=true] { background: var(--dxhighlight-match-active-background, #b9741e); }
+.dxhighlight-searchable {
+  position: relative; display: flex; flex-direction: column;
+  height: 100%; min-height: 0;
+}
+.dxhighlight-searchable > .dxhighlight { flex: 1; }
+.dxhighlight-find {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 4px;
+  font: 12px/20px system-ui, sans-serif; color: var(--code-text);
+  background: var(--code-gutter); border-bottom: 1px solid var(--code-border);
+}
+.dxhighlight-find input { flex: 1 1 10em; min-width: 6em; font: inherit; }
+.dxhighlight-find button, .dxhighlight-find-open {
+  font: inherit; padding: 0 6px; color: inherit; background: transparent;
+  border: 1px solid var(--code-border); border-radius: 4px; cursor: pointer;
+}
+.dxhighlight-find button[aria-pressed=true] { background: var(--code-selection); }
+.dxhighlight-find-status { min-width: 6em; color: var(--code-muted); }
+.dxhighlight-find-note { flex-basis: 100%; color: var(--code-muted); }
+.dxhighlight-find-open {
+  position: absolute; top: 4px; right: 12px; z-index: 1;
+  font: 12px/20px system-ui, sans-serif; color: var(--code-muted);
+  background: var(--code-background); opacity: .8;
+}
+.dxhighlight-editor {
+  box-sizing: border-box; width: 100%; height: 100%; min-height: 0; margin: 0;
+  padding: 0 .5em; resize: none; border: 0; outline: none;
+  font: 12px/20px ui-monospace, SFMono-Regular, monospace; tab-size: 4;
+  color: var(--code-text); background: var(--code-background);
+}

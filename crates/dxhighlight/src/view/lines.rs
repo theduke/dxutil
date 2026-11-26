@@ -3,7 +3,20 @@ use std::ops::Range;
 
 pub(super) struct RenderedLine {
     pub number: usize,
-    pub parts: Vec<(String, &'static str)>,
+    pub parts: Vec<Part>,
+}
+
+pub(super) struct Part {
+    pub text: String,
+    pub class: &'static str,
+    pub mark: Mark,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Mark {
+    None,
+    Match,
+    Active,
 }
 
 pub(super) fn index(text: &str) -> Vec<Range<usize>> {
@@ -17,25 +30,66 @@ pub(super) fn index(text: &str) -> Vec<Range<usize>> {
         .collect()
 }
 
+/// Find matches as sorted document byte ranges and the index of the active one.
+#[derive(Clone, Copy)]
+pub(super) struct Marks<'a> {
+    pub matches: &'a [Range<usize>],
+    pub active: Option<usize>,
+}
+
 // Row construction stays independent of DOM APIs, parsing and virtualization.
 pub(super) fn render(
     text: &str,
     lines: &[Range<usize>],
     first: usize,
     spans: &[HighlightSpan],
+    marks: Marks<'_>,
 ) -> Vec<RenderedLine> {
+    let window_start = lines.first().map_or(0, |line| line.start);
+    let offset = marks.matches.partition_point(|m| m.end <= window_start);
+    let marks = Marks {
+        matches: &marks.matches[offset..],
+        active: marks.active.and_then(|active| active.checked_sub(offset)),
+    };
     lines
         .iter()
         .enumerate()
         .map(|(i, line)| RenderedLine {
             number: first + i + 1,
-            parts: parts(text, line.clone(), spans),
+            parts: parts(text, line.clone(), spans, marks),
         })
         .collect()
 }
 
-fn parts(text: &str, line: Range<usize>, spans: &[HighlightSpan]) -> Vec<(String, &'static str)> {
+fn parts(text: &str, line: Range<usize>, spans: &[HighlightSpan], marks: Marks<'_>) -> Vec<Part> {
     let mut result = Vec::new();
+    let mut next = marks.matches.partition_point(|m| m.end <= line.start);
+    let mut push = |range: Range<usize>, class: &'static str| {
+        let mut pos = range.start;
+        while pos < range.end {
+            while marks.matches.get(next).is_some_and(|m| m.end <= pos) {
+                next += 1;
+            }
+            let (end, mark) = match marks.matches.get(next) {
+                Some(m) if m.start <= pos => (
+                    m.end.min(range.end),
+                    if marks.active == Some(next) {
+                        Mark::Active
+                    } else {
+                        Mark::Match
+                    },
+                ),
+                Some(m) => (m.start.min(range.end), Mark::None),
+                None => (range.end, Mark::None),
+            };
+            result.push(Part {
+                text: text[pos..end].into(),
+                class,
+                mark,
+            });
+            pos = end;
+        }
+    };
     let mut byte = line.start;
     for span in spans
         .iter()
@@ -45,13 +99,13 @@ fn parts(text: &str, line: Range<usize>, spans: &[HighlightSpan]) -> Vec<(String
         let start = span.range.start.max(line.start);
         let end = span.range.end.min(line.end);
         if byte < start {
-            result.push((text[byte..start].into(), ""));
+            push(byte..start, "");
         }
-        result.push((text[start..end].into(), span.kind.class()));
+        push(start..end, span.kind.class());
         byte = end;
     }
     if byte < line.end {
-        result.push((text[byte..line.end].into(), ""));
+        push(byte..line.end, "");
     }
     result
 }

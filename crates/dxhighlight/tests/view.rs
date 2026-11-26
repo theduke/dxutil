@@ -1,6 +1,6 @@
 #![cfg(all(feature = "viewer", not(target_arch = "wasm32")))]
 use dioxus::prelude::*;
-use dxhighlight::{CodeView, LineTarget};
+use dxhighlight::{CodeFind, CodeView, FindQuery, LineTarget};
 
 fn render(app: fn() -> Element) -> String {
     let mut dom = VirtualDom::new(app);
@@ -60,4 +60,23 @@ fn large_input_renders_plain_rows_before_background_highlighting() {
     assert!(html.contains("data-highlight-pending=\"true\""));
     assert!(html.contains("fn main() {}"));
     assert!(html.matches("class=\"dxhighlight-line\"").count() <= 144);
+}
+
+#[test]
+fn find_marks_matches_and_scrolls_to_the_active_one() {
+    let html = render(|| {
+        let mut lines = vec!["line".to_string(); 8000];
+        lines[3999] = "x Needle needle".into();
+        lines[4000] = "needle".into();
+        rsx! { CodeView {
+            value: lines.join("\n"), path: "log.txt".to_string(), viewport_lines: Some(40),
+            find: CodeFind { query: FindQuery { text: "needle".into(), case_sensitive: false }, active: 1 },
+        } }
+    });
+    assert!(html.contains("data-match-count=\"3\""));
+    let row = html.split("data-line=\"4000\"").nth(1).unwrap();
+    let row = row.split("data-line=\"4001\"").next().unwrap();
+    assert!(row.contains("data-active=\"false\">Needle</span>"));
+    assert!(row.contains("data-active=\"true\">needle</span>"));
+    assert_eq!(html.matches("data-active=\"true\"").count(), 1);
 }

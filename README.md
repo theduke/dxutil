@@ -17,7 +17,7 @@ Run `make serve-playground` for the web app or
 | [`dxform`](crates/dxform/README.md) | Typed form state, validation, and submission | [![crates.io](https://img.shields.io/crates/v/dxform.svg)](https://crates.io/crates/dxform) |
 | [`dxterm`](crates/dxterm/README.md) | Rust terminal component for Dioxus | [![crates.io](https://img.shields.io/crates/v/dxterm.svg)](https://crates.io/crates/dxterm) |
 | [`dxterm_core`](crates/dxterm_core/README.md) | Headless terminal model and input encoding | [![crates.io](https://img.shields.io/crates/v/dxterm_core.svg)](https://crates.io/crates/dxterm_core) |
-| [`dxhighlight`](crates/dxhighlight/README.md) | Tree-sitter highlighting and a read-only Rust code viewer | [![crates.io](https://img.shields.io/crates/v/dxhighlight.svg)](https://crates.io/crates/dxhighlight) |
+| [`dxhighlight`](crates/dxhighlight/README.md) | Tree-sitter highlighting, a code viewer with find and a plain-text editor | [![crates.io](https://img.shields.io/crates/v/dxhighlight.svg)](https://crates.io/crates/dxhighlight) |
 | [`dxcomp-primitives`](crates/dxcomp-primitives/README.md) | Temporary fork of upstream `dioxus-primitives` | [![crates.io](https://img.shields.io/crates/v/dxcomp-primitives.svg)](https://crates.io/crates/dxcomp-primitives) |
 | [`dxcomp-attributes`](crates/dxcomp-attributes/README.md) | Companion fork of upstream attribute macros | [![crates.io](https://img.shields.io/crates/v/dxcomp-attributes.svg)](https://crates.io/crates/dxcomp-attributes) |
 

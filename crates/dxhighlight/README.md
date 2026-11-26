@@ -1,7 +1,8 @@
 # dxhighlight
 
-Tree-sitter highlighting in Rust and a read-only Dioxus code viewer. No editor,
-JavaScript bundle, Node build step or runtime grammar download is required.
+Tree-sitter highlighting in Rust, a read-only Dioxus code viewer with
+document find, and a plain-text editor. No JavaScript bundle, Node build step or
+runtime grammar download is required.
 
 ## Use
 
@@ -42,6 +43,33 @@ window; `None` renders all lines for SSR, export or renderers without scroll
 events. Selection is limited to currently rendered lines. With `dom`,
 `on_selection` reports selected text and one-based line bounds on mouse release
 or keyboard selection; line numbers are excluded.
+
+## Find
+
+`CodeView { find: Some(CodeFind { query, active }), on_find }` marks every
+match of `query` in the whole document, not just the rendered window, and
+scrolls the `active` match (wrapped modulo the count) into view, horizontally
+too. `on_find` receives a `FindSummary { count, capped }` whenever it changes.
+Matching is a plain substring search; case-insensitive mode folds ASCII only.
+Empty queries and queries containing line breaks match nothing. Collection
+stops at `MAX_FIND_MATCHES` (10,000) and sets `capped`. `find_matches` exposes
+the same search without Dioxus.
+
+`SearchableCodeView` takes the viewer props plus `scope_note` and owns the find
+state. Ctrl/Cmd+F inside the viewer, or its Find button, opens a `FindBar`.
+Enter and Shift+Enter step through matches; Escape closes. `FindBar` can also
+be used on its own next to a `CodeView`. Override
+`--dxhighlight-match-background`, `--dxhighlight-match-active-background` and
+`--dxhighlight-match-active-text` to restyle matches.
+
+## Plain-text editor
+
+`TextEditor { value, on_input, on_save, goto, on_selection, read_only, wrap, label }`
+is a styled textarea with the viewer's font and line height. It keeps source
+text verbatim except for the browser's LF normalization, so callers restore
+CRLF or a BOM on save. Ctrl/Cmd+S calls `on_save`. With `dom`, `goto` moves the
+caret and scrolls, and `on_selection` reports the selection; without `dom` they
+do nothing.
 
 ## Highlight API
 
@@ -119,7 +147,7 @@ small; additional grammars increase download and compile costs.
 | `cpp` | C++, `c++`, `cc`, `cxx` |
 | `all-languages` | All languages above |
 | `viewer` | RSX component, no specific renderer |
-| `dom` | Optional DOM selection through Dioxus eval |
+| `dom` | Optional DOM selection and editor caret positioning through Dioxus eval |
 | `web` | `dom` and Dioxus web |
 | `desktop` | `dom` and Dioxus desktop (wry webview) |
 
@@ -178,8 +206,9 @@ scroll/focus operations are also ignored. Neither prevents rendering.
 
 ## Costs and limitations
 
-Read-only only: no editing, change/save events, editing keymaps, wrapping, or
-selection across unrendered rows. A value/path change creates a fresh parser
+The viewer is read-only: no wrapping or selection across unrendered rows. Use
+`TextEditor` for editing; it has no highlighting, undo history beyond the
+browser's, or editing keymaps. A value/path change creates a fresh parser
 session. Above 128 KiB, the viewer first renders plain rows, then parses on a
 native host thread or yields between bounded tree-sitter parse steps on wasm.
 Small documents parse synchronously for immediate SSR tokens. Query compilation

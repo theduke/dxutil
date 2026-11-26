@@ -1,21 +1,31 @@
-//! Tree-sitter highlighting and a read-only Dioxus code viewer.
+//! Tree-sitter highlighting, a read-only Dioxus code viewer with find, and a
+//! plain-text editor.
 //!
 //! Core ranges use UTF-8 **byte** offsets. [`highlight_lines`] returns per-line
 //! Unicode scalar (**char**) offsets, suitable for diff rendering, never UTF-16.
+#[cfg(feature = "viewer")]
+mod editor;
 mod highlight;
 mod languages;
+mod search;
 mod session;
 mod tokens;
 #[cfg(feature = "viewer")]
 mod view;
 
+#[cfg(feature = "viewer")]
+pub use editor::{TextEditor, TextEditorProps};
 pub use highlight::{HighlightSpan, highlight_lines};
 pub use languages::{Language, language_for_path, language_named, languages};
+pub use search::{FindQuery, FindSummary, MAX_FIND_MATCHES, find_matches};
 use serde::{Deserialize, Serialize};
 pub use session::{HighlightSession, TextEdit};
 pub use tokens::{TokenKind, TokenSpan};
 #[cfg(feature = "viewer")]
-pub use view::{CodeView, CodeViewProps};
+pub use view::{
+    CodeFind, CodeView, CodeViewProps, FindBar, FindBarProps, SearchableCodeView,
+    SearchableCodeViewProps,
+};
 
 /// One-based line and optional one-based Unicode scalar column.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
